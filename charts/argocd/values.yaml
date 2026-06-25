@@ -1,0 +1,79 @@
+argo-cd:
+  global:
+    domain: localhost
+
+  configs:
+    params:
+      server.insecure: true
+    cm:
+      accounts.admin: "apiKey, login"
+    repositories:
+      devtools-provisions:
+        url: https://github.com/devops-tashtiot/devtools-provisions
+        type: git
+        name: devtools-provisions
+      devtools-definition:
+        url: https://github.com/devops-tashtiot/devtools-definition
+        type: git
+        name: devtools-definition
+
+  server:
+    service:
+      type: ClusterIP
+    extraArgs:
+      - --insecure
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+
+  controller:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 300m
+        memory: 512Mi
+
+  repoServer:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+
+  applicationSet:
+    resources:
+      requests:
+        cpu: 25m
+        memory: 64Mi
+      limits:
+        cpu: 100m
+        memory: 128Mi
+
+  redis:
+    enabled: true
+    resources:
+      requests:
+        cpu: 10m
+        memory: 64Mi
+      limits:
+        cpu: 100m
+        memory: 128Mi
+
+  redis-ha:
+    enabled: false
+
+  dex:
+    enabled: false
+
+  notifications:
+    enabled: false

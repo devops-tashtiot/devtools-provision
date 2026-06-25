@@ -1,0 +1,10 @@
+apiVersion: v2
+name: argocd
+description: Argo CD umbrella chart for devtools
+type: application
+version: 1.0.0
+appVersion: "v3.3.0"
+dependencies:
+  - name: argo-cd
+    version: 9.4.2
+    repository: "file://./charts/argo-cd"
