@@ -1,6 +1,6 @@
 argo-cd:
   global:
-    domain: localhost
+    domain: ""  # overridden per environment in devtools-definition
 
   configs:
     params:
