@@ -61,15 +61,15 @@ bitbucket:
 
     resources:
       jvm:
-        maxHeap: "1g"
+        maxHeap: "768m"
         minHeap: "512m"
       container:
         requests:
           cpu: "500m"
-          memory: "2Gi"
+          memory: "3Gi"
         limits:
           cpu: "2"
-          memory: "2Gi"
+          memory: "3Gi"
 
     clustering:
       enabled: false
