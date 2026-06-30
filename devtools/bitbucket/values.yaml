@@ -59,6 +59,10 @@ bitbucket:
       displayNameSecretKey: displayName
       emailAddressSecretKey: emailAddress
 
+    additionalEnvironmentVariables:
+      - name: OPENSEARCH_JAVA_OPTS
+        value: "-Xms256m -Xmx512m"
+
     resources:
       jvm:
         maxHeap: "768m"
