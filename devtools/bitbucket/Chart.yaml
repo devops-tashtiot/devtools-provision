@@ -1,0 +1,10 @@
+apiVersion: v2
+name: bitbucket
+description: Bitbucket Data Center 8.19.5
+type: application
+version: 1.0.0
+appVersion: "8.19.5"
+dependencies:
+  - name: bitbucket
+    version: "1.20.1"
+    repository: "https://atlassian.github.io/data-center-helm-charts"

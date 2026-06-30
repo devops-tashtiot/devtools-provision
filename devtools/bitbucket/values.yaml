@@ -1,0 +1,87 @@
+# Base values — DB URL and secrets are overridden in devtools-definition
+
+bitbucket:
+  replicaCount: 1
+
+  database:
+    # URL set in devtools-definition after RDS is provisioned
+    url: ""
+    driver: "org.postgresql.Driver"
+    credentials:
+      secretName: bitbucket-db
+      usernameSecretKey: username
+      passwordSecretKey: password
+
+  ingress:
+    create: true
+    className: nginx
+    nginx: true
+    maxBodySize: 250m
+    host: bitbucket.devopstashtiot.page
+    https: false
+    annotations:
+      nginx.ingress.kubernetes.io/ssl-redirect: "false"
+      nginx.ingress.kubernetes.io/proxy-body-size: "250m"
+      nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+      nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+
+  volumes:
+    localHome:
+      persistentVolumeClaim:
+        create: true
+        storageClassName: gp2
+        resources:
+          requests:
+            storage: 10Gi
+    sharedHome:
+      customVolume:
+        persistentVolumeClaim:
+          claimName: bitbucket-shared-home
+      nfsPermissionFixer:
+        enabled: false
+
+  bitbucket:
+    service:
+      type: ClusterIP
+      port: 80
+
+    ssh:
+      type: ClusterIP
+
+    license:
+      secretName: bitbucket-license
+      secretKey: license-key
+
+    sysadminCredentials:
+      secretName: bitbucket-sysadmin
+      usernameSecretKey: username
+      passwordSecretKey: password
+      displayNameSecretKey: displayName
+      emailAddressSecretKey: emailAddress
+
+    resources:
+      jvm:
+        maxHeap: "1g"
+        minHeap: "512m"
+      container:
+        requests:
+          cpu: "500m"
+          memory: "2Gi"
+        limits:
+          cpu: "2"
+          memory: "2Gi"
+
+    clustering:
+      enabled: false
+
+# Secret placeholders — all overridden in devtools-definition
+bitbucketSecrets:
+  license: ""
+  admin:
+    username: ""
+    password: ""
+    displayName: "Bitbucket Admin"
+    emailAddress: "admin@example.com"
+  db:
+    username: ""
+    password: ""
