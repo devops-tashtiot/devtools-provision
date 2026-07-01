@@ -3,6 +3,10 @@
 confluence:
   replicaCount: 1
 
+  image:
+    repository: atlassian/confluence
+    tag: "9.3.1"
+
   database:
     type: postgresql
     # URL set in devtools-definition after RDS is provisioned
@@ -69,10 +73,10 @@ confluence:
         reservedCodeCache: "256m"
       container:
         requests:
-          cpu: 500m
+          cpu: 2000m
           memory: 2Gi
         limits:
-          cpu: 2
+          cpu: 3
           memory: 2.5Gi
 
   synchrony:
