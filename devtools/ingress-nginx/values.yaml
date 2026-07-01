@@ -1,0 +1,15 @@
+# Base values — ClusterIP only, no AWS load balancer needed.
+# cloudflared (see devtools/cloudflared) dials out to Cloudflare and forwards
+# traffic to this controller; it routes onward by Host header.
+
+ingress-nginx:
+  controller:
+    service:
+      type: ClusterIP
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi

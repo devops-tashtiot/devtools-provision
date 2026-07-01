@@ -1,0 +1,29 @@
+# Base values — tunnel identity is environment-specific, set in devtools-definition.
+
+image:
+  repository: cloudflare/cloudflared
+  tag: "2024.12.0"
+
+replicas: 1
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 64Mi
+  limits:
+    cpu: 100m
+    memory: 128Mi
+
+# Cloudflare Tunnel ID (see parent CLAUDE.md for account details) — set per environment.
+tunnelId: ""
+
+# SSM Parameter Store path (SecureString) holding the tunnel credentials JSON
+# produced by `cloudflared tunnel create`. Pulled in via an ExternalSecret —
+# requires the external-secrets-operator devtool to be deployed first.
+tunnelCredentialsSsmParameter: ""
+
+# cloudflared ingress rules. nginx-ingress (see devtools/ingress-nginx) does the
+# actual Host-header routing, so a single catch-all rule is normally enough —
+# add a new Kubernetes Ingress for each tool rather than editing this list.
+ingress:
+  - service: http://ingress-nginx-controller.ingress-nginx.svc.cluster.local:80
