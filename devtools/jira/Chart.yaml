@@ -1,0 +1,10 @@
+apiVersion: v2
+name: jira
+description: Jira Data Center umbrella chart for devtools
+type: application
+version: 1.0.0
+appVersion: "11.3.7"
+dependencies:
+  - name: jira
+    version: 2.0.14
+    repository: "file://./charts/jira"

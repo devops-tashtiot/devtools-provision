@@ -1,0 +1,89 @@
+# Base values — DB URL and secrets are overridden in devtools-definition
+
+jira:
+  replicaCount: 1
+
+  database:
+    type: postgres72
+    # URL set in devtools-definition after RDS is provisioned
+    url: ""
+    driver: "org.postgresql.Driver"
+    credentials:
+      secretName: jira-db
+      usernameSecretKey: username
+      passwordSecretKey: password
+
+  ingress:
+    create: true
+    className: nginx
+    nginx: true
+    maxBodySize: 250m
+    host: jira.devopstashtiot.page
+    https: false
+    annotations:
+      nginx.ingress.kubernetes.io/ssl-redirect: "false"
+      nginx.ingress.kubernetes.io/proxy-body-size: "250m"
+      nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+      nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+
+  volumes:
+    localHome:
+      persistentVolumeClaim:
+        create: true
+        storageClassName: gp2
+        resources:
+          requests:
+            storage: 10Gi
+    sharedHome:
+      persistentVolumeClaim:
+        create: true
+        storageClassName: gp2
+        resources:
+          requests:
+            storage: 10Gi
+
+  # Upstream chart quirk (same as devtools-provisions/devtools/bitbucket/values.yaml
+  # and devtools-provisions/devtools/confluence/values.yaml): some fields
+  # (resources, additionalEnvironmentVariables, etc.) are read by the chart's own
+  # templates as `.Values.jira.<field>` (self-prefixed) instead of the normal
+  # `.Values.<field>`. Helm strips the outer "jira:" wrapper when passing values
+  # down from this umbrella chart, so those specific fields must be duplicated
+  # here to actually reach the subchart. Everything else (database, volumes,
+  # ingress) resolves fine unprefixed.
+  jira:
+    resources:
+      jvm:
+        maxHeap: "1536m"
+        minHeap: "1536m"
+      container:
+        requests:
+          cpu: 2000m
+          memory: 2Gi
+        limits:
+          cpu: 3
+          memory: 2.5Gi
+
+# Secret placeholders — all overridden in devtools-definition.
+#
+# NOTE: unlike bitbucket, Jira's Docker image/Helm chart has no built-in
+# mechanism to auto-apply a license or auto-create the sysadmin user
+# (confirmed against the upstream chart + Atlassian docs — no
+# ATL_LICENSE_KEY/SETUP_LICENSE/sysadminCredentials support exists for Jira).
+# Since nothing in the chart would ever read a jira-license/jira-sysadmin
+# Secret, we deliberately don't create one — that would just be inert
+# plumbing. The license lives in SSM at /devtools/jira/license and the shared
+# admin password at /devtools/admin/password; read them directly with
+# `aws ssm get-parameter --with-decryption` for the one-time manual setup
+# wizard instead.
+jiraSecrets:
+  db:
+    username: ""
+    password: ""
+
+# RDS master credentials (SSM SecureString paths) — used only by the
+# additionalInitContainer (see devtools-definition) that ensures this tool's
+# database/role exist on the shared RDS instance. Requires the
+# external-secrets-operator devtool. Set in devtools-definition.
+rdsAdmin:
+  usernameSsmParameter: ""
+  passwordSsmParameter: ""
