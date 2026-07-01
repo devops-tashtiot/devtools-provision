@@ -1,0 +1,88 @@
+# Base values — DB URL, license path, and ingress host are overridden in devtools-definition
+
+confluence:
+  replicaCount: 1
+
+  database:
+    type: postgresql
+    # URL set in devtools-definition after RDS is provisioned
+    url: ""
+    credentials:
+      secretName: confluence-db
+      usernameSecretKey: username
+      passwordSecretKey: password
+
+  ingress:
+    create: true
+    className: nginx
+    nginx: true
+    maxBodySize: 250m
+    host: confluence.devopstashtiot.page
+    https: false
+    annotations:
+      nginx.ingress.kubernetes.io/ssl-redirect: "false"
+      nginx.ingress.kubernetes.io/proxy-body-size: "250m"
+      nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+      nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+
+  volumes:
+    localHome:
+      persistentVolumeClaim:
+        create: true
+        storageClassName: gp2
+        resources:
+          requests:
+            storage: 10Gi
+    sharedHome:
+      persistentVolumeClaim:
+        create: true
+        accessModes:
+          - ReadWriteOnce
+        storageClassName: gp2
+        resources:
+          requests:
+            storage: 10Gi
+    synchronyHome:
+      persistentVolumeClaim:
+        create: true
+        storageClassName: gp2
+        resources:
+          requests:
+            storage: 2Gi
+
+  license:
+    secretName: confluence-license
+    secretKey: license-key
+
+  resources:
+    jvm:
+      maxHeap: "1536m"
+      minHeap: "1536m"
+      reservedCodeCache: "256m"
+    container:
+      requests:
+        cpu: 500m
+        memory: 2Gi
+      limits:
+        cpu: 2
+        memory: 2.5Gi
+
+  synchrony:
+    resources:
+      requests:
+        cpu: 250m
+        memory: 1Gi
+      limits:
+        cpu: 1
+        memory: 1.5Gi
+
+# Secret placeholders — all overridden in devtools-definition
+confluenceSecrets:
+  license: ""
+  # SSM Parameter Store path for the license (SecureString). Used instead of
+  # `license` above when set, via an ExternalSecret — keeps the license out
+  # of git. Requires the external-secrets-operator devtool to be deployed.
+  licenseSsmParameter: ""
+  db:
+    username: ""
+    password: ""
