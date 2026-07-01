@@ -77,3 +77,18 @@ argo-cd:
 
   notifications:
     enabled: false
+
+# Ingress for argocd-server, routed through the ingress-nginx + cloudflared
+# devtools. Disabled by default: on EKS, ingress is still terraform-managed
+# (argocd-ingress module) to avoid a duplicate Ingress object owned by two
+# controllers. Enable only for environments (e.g. minikube) where ingress is
+# fully GitOps-managed — see devtools-definition/devtools/argocd/values.yaml.
+ingress:
+  enabled: false
+  host: ""
+
+# SSM Parameter Store path (SecureString) holding the shared admin password
+# (plaintext) — bcrypt-hashed on the fly by templates/argocd-admin-secret.yaml
+# via an ExternalSecret. Requires the external-secrets-operator devtool. Set
+# in devtools-definition.
+adminPasswordSsmParameter: ""

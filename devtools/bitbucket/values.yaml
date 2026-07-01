@@ -88,9 +88,20 @@ bitbucketSecrets:
   licenseSsmParameter: ""
   admin:
     username: ""
-    password: ""
     displayName: "Bitbucket Admin"
     emailAddress: "admin@example.com"
+  # SSM Parameter Store path (SecureString) holding the shared admin password
+  # (plaintext). Patched into the bitbucket-sysadmin Secret via an
+  # ExternalSecret. Requires the external-secrets-operator devtool.
+  adminPasswordSsmParameter: ""
   db:
     username: ""
     password: ""
+
+# RDS master credentials (SSM SecureString paths) — used only by the
+# additionalInitContainer (see devtools-definition) that ensures this tool's
+# database/role exist on the shared RDS instance. Requires the
+# external-secrets-operator devtool. Set in devtools-definition.
+rdsAdmin:
+  usernameSsmParameter: ""
+  passwordSsmParameter: ""

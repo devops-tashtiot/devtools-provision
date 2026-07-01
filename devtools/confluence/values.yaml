@@ -98,3 +98,11 @@ confluenceSecrets:
   db:
     username: ""
     password: ""
+
+# RDS master credentials (SSM SecureString paths) — used only by the
+# additionalInitContainer (see devtools-definition) that ensures this tool's
+# database/role exist on the shared RDS instance. Requires the
+# external-secrets-operator devtool. Set in devtools-definition.
+rdsAdmin:
+  usernameSsmParameter: ""
+  passwordSsmParameter: ""
