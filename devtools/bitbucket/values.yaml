@@ -34,6 +34,7 @@ bitbucket:
           requests:
             storage: 10Gi
     sharedHome:
+      storageClassName: gp2
       customVolume:
         persistentVolumeClaim:
           claimName: bitbucket-shared-home
