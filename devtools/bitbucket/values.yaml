@@ -82,6 +82,10 @@ bitbucket:
 # Secret placeholders — all overridden in devtools-definition
 bitbucketSecrets:
   license: ""
+  # SSM Parameter Store path for the license (SecureString). Used instead of
+  # `license` above when set, via an ExternalSecret — keeps the license out
+  # of git. Requires the external-secrets-operator devtool to be deployed.
+  licenseSsmParameter: ""
   admin:
     username: ""
     password: ""
