@@ -1,0 +1,24 @@
+{{- if .Values.monitoring.exposeJmxMetrics}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "common.names.fullname" . }}-jmx
+  labels:
+  {{- include "common.labels.commonLabels" . | nindent 4 }}
+  annotations:
+  {{- with .Values.monitoring.jmxServiceAnnotations }}
+  {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.monitoring.jmxExporterPortType }}
+  ports:
+    - port: {{ .Values.monitoring.jmxExporterPort}}
+      targetPort: jmx
+      appProtocol: http
+      name: jmx
+    - port: 9998
+      targetPort: 9998
+      name: jmx-mesh-sidecar
+  selector:
+  {{- include "common.labels.selectorLabels" . | nindent 4 }}
+{{- end }}

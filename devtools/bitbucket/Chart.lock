@@ -1,6 +1,0 @@
-dependencies:
-- name: bitbucket
-  repository: https://atlassian.github.io/data-center-helm-charts
-  version: 1.20.1
-digest: sha256:297561353bd2ba5b1a475eaf2d4dc3837dbdd7a548d26f37f49b9bd4a6be73c2
-generated: "2026-06-30T21:19:13.28410241+03:00"

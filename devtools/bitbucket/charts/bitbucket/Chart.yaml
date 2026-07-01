@@ -1,0 +1,29 @@
+annotations:
+  artifacthub.io/changes: '- "Update appVersions for DC apps (#1114)"'
+  artifacthub.io/containsSecurityUpdates: "false"
+apiVersion: v2
+appVersion: 10.2.2
+dependencies:
+- name: common
+  repository: https://atlassian.github.io/data-center-helm-charts
+  version: 1.2.7
+- condition: opensearch.install
+  name: opensearch
+  repository: https://opensearch-project.github.io/helm-charts
+  version: 2.19.0
+description: A chart for installing Bitbucket Data Center on Kubernetes
+home: https://atlassian.github.io/data-center-helm-charts/
+icon: https://atlassian.github.io/data-center-helm-charts/icons/bitbucket.svg
+keywords:
+- Bitbucket
+- Bitbucket Server
+- Bitbucket Data Center
+- Bitbucket DC
+- Atlassian
+kubeVersion: '>=1.21.x-0'
+name: bitbucket
+sources:
+- https://github.com/atlassian/data-center-helm-charts
+- https://bitbucket.org/atlassian-docker/docker-atlassian-bitbucket-server/
+type: application
+version: 2.0.13
