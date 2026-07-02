@@ -100,3 +100,13 @@ ingress:
 # via an ExternalSecret. Requires the external-secrets-operator devtool. Set
 # in devtools-definition.
 adminPasswordSsmParameter: ""
+
+# SSM Parameter Store path (SecureString) holding the RHBK-issued OIDC
+# client secret for this ArgoCD instance — synced into argocd-secret's
+# oidc.keycloak.clientSecret key by templates/oidc-secret.yaml via an
+# ExternalSecret. Requires both external-secrets-operator and rhbk (cluster
+# infra) devtools; the OIDC config itself (issuer/clientID, referencing this
+# secret via $argocd-secret:oidc.keycloak.clientSecret) lives in
+# devtools-definition since it's environment-specific. Set in
+# devtools-definition.
+oidcClientSecretSsmParameter: ""
