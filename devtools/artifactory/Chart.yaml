@@ -1,0 +1,10 @@
+apiVersion: v2
+name: artifactory
+description: Artifactory Data Center 7.117.15
+type: application
+version: 1.0.0
+appVersion: "7.117.15"
+dependencies:
+  - name: artifactory
+    version: "107.117.15"
+    repository: "file://./charts/artifactory"

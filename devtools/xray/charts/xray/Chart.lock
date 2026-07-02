@@ -1,0 +1,12 @@
+dependencies:
+- name: postgresql
+  repository: https://charts.jfrog.io/
+  version: 15.5.20
+- name: rabbitmq
+  repository: https://charts.jfrog.io/
+  version: 15.4.1
+- name: catalog
+  repository: https://charts.jfrog.io/
+  version: 101.22.5
+digest: sha256:f72b8f803eb0d574ab1f245dc5e0028eb0167f54a7935562a61a4eb46b6dd97f
+generated: "2025-08-12T08:45:02.732452+03:00"

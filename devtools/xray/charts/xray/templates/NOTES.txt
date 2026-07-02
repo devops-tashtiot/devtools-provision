@@ -1,0 +1,37 @@
+Congratulations! JFrog Xray services are deployed!
+
+{{- if and (eq .Values.xray.masterKey "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF") (not .Values.xray.masterKeySecretName) }}
+
+
+************************************* WARNING *****************************************
+* Your Xray master key is still set to the provided example:                          *
+* xray.masterKey=FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF     *
+*                                                                                     *
+* You should change this to your own generated key:                                   *
+* $ export MASTER_KEY=$(openssl rand -hex 32)                                         *
+* $ echo ${MASTER_KEY}                                                                *
+*                                                                                     *
+* Pass the created master key to helm with '--set xray.masterKey=${MASTER_KEY}'       *
+***************************************************************************************
+{{- end }}
+
+{{- if and (not .Values.isJfrogSaas) .Values.rabbitmq.enabled .Values.global.xray.rabbitmq.haQuorum.enabled }}
+  {{- if eq (int .Values.rabbitmq.replicaCount) 1 }}
+************************************* Please note *****************************************
+  'rabbitmq.replicaCount' is set to 1.                                                *
+  To achieve High Availability (HA) with quorum queues, it is recommended to set this to 3.
+***************************************************************************************
+  {{- end }}
+{{- end }}
+
+{{- if and (or (or (or .Values.systemYamlOverride.existingSecret (or .Values.xray.masterKeySecretName .Values.global.masterKeySecretName)) (or .Values.xray.joinKeySecretName .Values.global.joinKeySecretName)) .Values.database.secrets) .Values.xray.unifiedSecretInstallation }}
+****************************************** WARNING **************************************************************************************************
+* The unifiedSecretInstallation flag is currently enabled, which creates the unified secret. The existing secrets will continue as separate secrets.*
+* Update the values.yaml with the existing secrets to add them to the unified secret.                                                               *
+*****************************************************************************************************************************************************
+{{- end }}
+
+Open Artifactory - {{ .Values.xray.jfrogUrl }} in your browser. Xray should be activated with Artifactory.
+
+
+

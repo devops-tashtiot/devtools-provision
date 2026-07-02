@@ -1,0 +1,10 @@
+apiVersion: v2
+name: xray
+description: JFrog Xray 3.124.20
+type: application
+version: 1.0.0
+appVersion: "3.124.20"
+dependencies:
+  - name: xray
+    version: "103.124.20"
+    repository: "file://./charts/xray"

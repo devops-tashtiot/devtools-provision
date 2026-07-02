@@ -1,0 +1,112 @@
+# Base values — DB URL and secrets are overridden in devtools-definition.
+#
+# Upstream chart quirk (same as devtools-provision/devtools/bitbucket/values.yaml):
+# some fields (database, postgresql, nginx, ingress) are read by the chart's
+# templates at the subchart's own top level (`.Values.database`), while others
+# (admin, license, persistence, resources, javaOpts, replicaCount) are read
+# self-prefixed (`.Values.artifactory.admin`). Helm passes everything under
+# the outer "artifactory:" key here down into the subchart unprefixed, so the
+# self-prefixed fields need an extra inner "artifactory:" level to land right.
+
+artifactory:
+  # Disable the chart's bundled Postgres (Bitnami) and nginx sidecar — this
+  # platform reuses the shared RDS instance (see devtools-definition) and
+  # terminates ingress at the cluster's own ingress-nginx, not an in-chart nginx.
+  postgresql:
+    enabled: false
+  nginx:
+    enabled: false
+
+  database:
+    allowNonPostgresql: false
+    type: postgresql
+    driver: org.postgresql.Driver
+    # Referenced via secrets.url below (not the plain `url` field): with
+    # unifiedSecretInstallation (chart default) and database.secrets.user/
+    # password both set, the chart's own unified-secret template skips
+    # rendering db-url from a plain `database.url` value entirely — the
+    # statefulset would then reference a key that doesn't exist. Setting
+    # secrets.url ourselves sidesteps that gap. Value set in
+    # devtools-definition via artifactorySecrets.db.url.
+    secrets:
+      user:
+        name: artifactory-db
+        key: username
+      password:
+        name: artifactory-db
+        key: password
+      url:
+        name: artifactory-db
+        key: url
+
+  ingress:
+    enabled: true
+    className: nginx
+    hosts:
+      - artifactory.devopstashtiot.page
+    annotations:
+      nginx.ingress.kubernetes.io/ssl-redirect: "false"
+      nginx.ingress.kubernetes.io/proxy-body-size: "0"
+
+  artifactory:
+    replicaCount: 1
+
+    persistence:
+      type: file-system
+      size: 20Gi
+      storageClassName: gp2
+
+    resources:
+      requests:
+        cpu: "500m"
+        memory: "2Gi"
+      limits:
+        cpu: "2"
+        memory: "2.5Gi"
+
+    javaOpts:
+      xms: "1g"
+      xmx: "2g"
+
+    # Admin bootstrap comes from a Kubernetes Secret populated in
+    # devtools-definition (plaintext or via ExternalSecret from SSM — see
+    # templates/secrets.yaml in this umbrella chart). Always wired: every
+    # environment gets the shared admin password.
+    admin:
+      secret: artifactory-admin
+      dataKey: password
+    # License is deliberately left unset here: this chart mounts
+    # artifactory.license.secret unconditionally once set, and Kubernetes
+    # will fail to schedule the pod if that Secret doesn't exist. Only set
+    # license.secret/dataKey (to "artifactory-license"/"artifactory.lic") in
+    # devtools-definition once a real license is added to
+    # artifactorySecrets.license / .licenseSsmParameter below — see the
+    # comment there. Until then Artifactory runs unlicensed (OSS-tier
+    # features only; Xray cannot activate against it).
+    license: {}
+
+# Secret placeholders — all overridden in devtools-definition
+artifactorySecrets:
+  license: ""
+  # SSM Parameter Store path for the license (SecureString). Used instead of
+  # `license` above when set, via an ExternalSecret — keeps the license out
+  # of git. Requires the external-secrets-operator devtool to be deployed.
+  licenseSsmParameter: ""
+  admin:
+    username: "admin"
+  # SSM Parameter Store path (SecureString) holding the shared admin password
+  # (plaintext). Patched into the artifactory-admin Secret via an
+  # ExternalSecret. Requires the external-secrets-operator devtool.
+  adminPasswordSsmParameter: ""
+  db:
+    username: ""
+    password: ""
+    url: ""
+
+# RDS master credentials (SSM SecureString paths) — used only by the
+# customInitContainersBegin hook (see devtools-definition) that ensures this
+# tool's database/role exist on the shared RDS instance. Requires the
+# external-secrets-operator devtool. Set in devtools-definition.
+rdsAdmin:
+  usernameSsmParameter: ""
+  passwordSsmParameter: ""

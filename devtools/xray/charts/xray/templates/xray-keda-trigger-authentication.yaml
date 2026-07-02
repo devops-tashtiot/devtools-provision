@@ -1,0 +1,16 @@
+{{- if or .Values.autoscaling.keda.enabled  .Values.autoscalingIpa.keda.enabled .Values.server.autoscaling.keda.enabled .Values.indexer.autoscaling.keda.enabled .Values.persist.autoscaling.keda.enabled .Values.analysis.autoscaling.keda.enabled .Values.policyenforcer.autoscaling.keda.enabled .Values.sbom.autoscaling.keda.enabled }}
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  labels:
+    app: {{ template "xray.name" . }}
+    chart: {{ template "xray.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+  name: keda-trigger-auth-rabbitmq-conn-xray
+spec:
+  secretTargetRef:
+    - parameter: host
+      name: keda-rabbitmq-secret
+      key: host
+{{- end }}

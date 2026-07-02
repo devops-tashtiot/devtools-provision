@@ -1,0 +1,110 @@
+# Base values — DB URL, jfrogUrl and secrets are overridden in devtools-definition.
+#
+# Xray has no ingress and no license of its own — it's reached only through
+# Artifactory's UI/router (same cluster, cross-namespace Service DNS) and
+# inherits Artifactory's Enterprise license via the shared joinKey/masterKey
+# set in devtools-definition.
+#
+# Upstream chart quirk (same as devtools-provision/devtools/bitbucket/values.yaml
+# and devtools-provision/devtools/artifactory/values.yaml): most fields are read
+# by the chart's templates at the subchart's own top level (`.Values.database`),
+# but joinKey/masterKey/jfrogUrl are read self-prefixed (`.Values.xray.jfrogUrl`).
+# Helm passes everything under the outer "xray:" key here down into the
+# subchart unprefixed, so the self-prefixed fields need an extra inner "xray:"
+# level to land right.
+
+xray:
+  replicaCount: 1
+  autoscaling:
+    enabled: false
+
+  # Disable the chart's bundled Postgres (Bitnami) — this platform reuses the
+  # shared RDS instance (see devtools-definition). RabbitMQ stays bundled:
+  # it's Xray's own internal task queue, not something this platform shares.
+  postgresql:
+    enabled: false
+
+  database:
+    type: postgresql
+    driver: org.postgresql.Driver
+    # Referenced via secrets.url below (not the plain `url` field): with
+    # unifiedSecretInstallation (chart default) and database.secrets.user/
+    # password both set, the chart's own unified-secret template skips
+    # rendering db-url from a plain `database.url` value entirely — the
+    # statefulset would then reference a key that doesn't exist. Setting
+    # secrets.url ourselves sidesteps that gap. Value set in
+    # devtools-definition via xraySecrets.db.url.
+    secrets:
+      user:
+        name: xray-db
+        key: username
+      password:
+        name: xray-db
+        key: password
+      url:
+        name: xray-db
+        key: url
+
+  analysis:
+    resources:
+      requests:
+        cpu: "100m"
+        memory: "250Mi"
+      limits:
+        memory: "2Gi"
+  indexer:
+    resources:
+      requests:
+        cpu: "300m"
+        memory: "550Mi"
+      limits:
+        memory: "2Gi"
+  persist:
+    resources:
+      requests:
+        cpu: "100m"
+        memory: "250Mi"
+      limits:
+        memory: "1Gi"
+  server:
+    resources:
+      requests:
+        cpu: "300m"
+        memory: "500Mi"
+      limits:
+        memory: "1Gi"
+  router:
+    resources:
+      requests:
+        cpu: "60m"
+        memory: "100Mi"
+      limits:
+        memory: "512Mi"
+
+  rabbitmq:
+    resources:
+      requests:
+        cpu: "50m"
+        memory: "300Mi"
+      limits:
+        memory: "1Gi"
+
+  # Self-prefixed fields (see quirk note above) — joinKey/masterKey/jfrogUrl
+  # set in devtools-definition (shared joinKey/masterKey with artifactory).
+  xray:
+    jfrogUrl: ""
+
+# Secret placeholders — all overridden in devtools-definition
+xraySecrets:
+  db:
+    username: ""
+    password: ""
+    url: ""
+
+# RDS master credentials (SSM SecureString paths) — used only by the
+# customInitContainersBegin hook (see devtools-definition) that ensures this
+# tool's database/role exist on the shared RDS instance. Requires the
+# external-secrets-operator devtool. Set in devtools-definition.
+rdsAdmin:
+  usernameSsmParameter: ""
+  passwordSsmParameter: ""
