@@ -42,8 +42,8 @@ jira:
           requests:
             storage: 10Gi
 
-  # Upstream chart quirk (same as devtools-provisions/devtools/bitbucket/values.yaml
-  # and devtools-provisions/devtools/confluence/values.yaml): some fields
+  # Upstream chart quirk (same as devtools-provision/devtools/bitbucket/values.yaml
+  # and devtools-provision/devtools/confluence/values.yaml): some fields
   # (resources, additionalEnvironmentVariables, etc.) are read by the chart's own
   # templates as `.Values.jira.<field>` (self-prefixed) instead of the normal
   # `.Values.<field>`. Helm strips the outer "jira:" wrapper when passing values

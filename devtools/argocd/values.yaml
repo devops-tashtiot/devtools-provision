@@ -8,14 +8,22 @@ argo-cd:
     cm:
       accounts.admin: "apiKey, login"
     repositories:
-      devtools-provisions:
-        url: https://github.com/devops-tashtiot/devtools-provisions
+      devtools-provision:
+        url: https://github.com/devops-tashtiot/devtools-provision
         type: git
-        name: devtools-provisions
+        name: devtools-provision
       devtools-definition:
         url: https://github.com/devops-tashtiot/devtools-definition
         type: git
         name: devtools-definition
+      clusters-provision:
+        url: https://github.com/devops-tashtiot/clusters-provision
+        type: git
+        name: clusters-provision
+      clusters-definition:
+        url: https://github.com/devops-tashtiot/clusters-definition
+        type: git
+        name: clusters-definition
 
   server:
     service:

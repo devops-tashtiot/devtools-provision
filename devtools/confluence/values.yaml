@@ -54,7 +54,7 @@ confluence:
           requests:
             storage: 2Gi
 
-  # Upstream chart quirk (same as devtools-provisions/devtools/bitbucket/values.yaml):
+  # Upstream chart quirk (same as devtools-provision/devtools/bitbucket/values.yaml):
   # some fields (license, resources, service, etc.) are read by the chart's own
   # templates as `.Values.confluence.<field>` (self-prefixed) instead of the
   # normal `.Values.<field>`. Helm strips the outer "confluence:" wrapper when
