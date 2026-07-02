@@ -1,0 +1,77 @@
+# Base values — DB URL and secrets are overridden in devtools-definition
+
+sonarqube:
+  replicaCount: 1
+
+  image:
+    repository: sonarqube
+    tag: "25.6.0.109173-community"
+
+  # Required so the chart doesn't demand a paid `edition` (developer/
+  # enterprise) — image.tag above already pins the exact Community Build we
+  # want, so community.buildNumber (the chart's own default-tag fallback) is
+  # left unset.
+  community:
+    enabled: true
+
+  # Embedded Postgres/nginx subcharts are disabled — this platform reuses the
+  # shared devtools-rds instance (via jdbcOverwrite below) and the cluster's
+  # own nginx-ingress (via a plain Ingress, not the bundled nginx subchart).
+  postgresql:
+    enabled: false
+  nginx:
+    enabled: false
+
+  jdbcOverwrite:
+    enabled: true
+    # URL and username set in devtools-definition after RDS is provisioned
+    jdbcUrl: ""
+    jdbcUsername: ""
+    jdbcSecretName: sonarqube-db
+    jdbcSecretPasswordKey: password
+
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    hosts:
+      - name: sonarqube.devopstashtiot.page
+    annotations:
+      nginx.ingress.kubernetes.io/ssl-redirect: "false"
+
+  persistence:
+    enabled: true
+    storageClass: gp2
+    size: 10Gi
+
+  resources:
+    requests:
+      cpu: 400m
+      memory: 2048M
+    limits:
+      cpu: 800m
+      memory: 3072M
+
+  # Required for the readiness probe to ever succeed (chart requirement, not
+  # a credential to an external system) — set in devtools-definition.
+  monitoringPasscode: ""
+
+  # Bootstraps the admin password at container startup instead of the manual
+  # setup wizard — SonarQube Community Edition supports this natively via a
+  # Secret with "password"/"currentPassword" keys (unlike Jira, which has no
+  # such mechanism at all). Secret populated in templates/secrets.yaml below.
+  setAdminPassword:
+    passwordSecretName: sonarqube-admin-password
+
+# SSM Parameter Store path (SecureString) holding the shared admin password
+# (plaintext) — patched into the sonarqube-admin-password Secret's "password"
+# key via an ExternalSecret. Requires the external-secrets-operator devtool.
+# Set in devtools-definition.
+adminPasswordSsmParameter: ""
+
+# RDS master credentials (SSM SecureString paths) — used only by the
+# extraInitContainers entry (see devtools-definition) that ensures this
+# tool's database exists on the shared RDS instance. Requires the
+# external-secrets-operator devtool. Set in devtools-definition.
+rdsAdmin:
+  usernameSsmParameter: ""
+  passwordSsmParameter: ""
