@@ -95,9 +95,6 @@ confluenceSecrets:
   # `license` above when set, via an ExternalSecret — keeps the license out
   # of git. Requires the external-secrets-operator devtool to be deployed.
   licenseSsmParameter: ""
-  db:
-    username: ""
-    password: ""
 
 # RDS master credentials (SSM SecureString paths) — used only by the
 # additionalInitContainer (see devtools-definition) that ensures this tool's

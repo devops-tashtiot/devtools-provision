@@ -94,9 +94,6 @@ bitbucketSecrets:
   # (plaintext). Patched into the bitbucket-sysadmin Secret via an
   # ExternalSecret. Requires the external-secrets-operator devtool.
   adminPasswordSsmParameter: ""
-  db:
-    username: ""
-    password: ""
 
 # RDS master credentials (SSM SecureString paths) — used only by the
 # additionalInitContainer (see devtools-definition) that ensures this tool's

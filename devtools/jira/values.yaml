@@ -75,11 +75,6 @@ jira:
 # admin password at /devtools/admin/password; read them directly with
 # `aws ssm get-parameter --with-decryption` for the one-time manual setup
 # wizard instead.
-jiraSecrets:
-  db:
-    username: ""
-    password: ""
-
 # RDS master credentials (SSM SecureString paths) — used only by the
 # additionalInitContainer (see devtools-definition) that ensures this tool's
 # database/role exist on the shared RDS instance. Requires the
