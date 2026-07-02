@@ -1,6 +1,0 @@
-apiVersion: v2
-name: cloudflared
-description: Cloudflare Tunnel devtool — routes inbound traffic into the cluster via cloudflared, no AWS load balancer needed
-type: application
-version: 1.0.0
-appVersion: "2024.12.0"
