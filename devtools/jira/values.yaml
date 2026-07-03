@@ -55,6 +55,15 @@ jira:
       jvm:
         maxHeap: "1536m"
         minHeap: "1536m"
+        # Without an explicit override the subchart defaults reservedCodeCache to
+        # 512m, which lets the JVM's reported non-heap ceiling reach 1536m
+        # (Committed/Max shown at startup) on top of the 1536m heap max — a
+        # theoretical total of 3072m against a 2.5Gi (2560Mi) container limit.
+        # That mismatch produced a real OOMKill (exit 137) on jira-0 in
+        # production. Confluence's chart (devtools-provision/devtools/confluence/values.yaml)
+        # already overrides this to 256m for the same container limit — mirror
+        # that here so Jira's JVM footprint actually fits its cgroup limit.
+        reservedCodeCache: "256m"
       container:
         requests:
           cpu: 2000m
