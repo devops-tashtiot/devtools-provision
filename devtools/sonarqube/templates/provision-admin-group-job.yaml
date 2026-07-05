@@ -1,0 +1,64 @@
+# SonarQube's own REST API has no declarative "create this group with this
+# permission" mechanism the chart exposes as a values field, unlike
+# sonarProperties for auth settings — so this Job calls the API directly,
+# same reasoning as RHBK's kcadm-based Jobs (clusters-provision/clusters/rhbk).
+#
+# sonar-auth-oidc's groupsSync (see values.yaml) only ASSOCIATES a logging-in
+# user to a SonarQube group that already exists with the same name as the
+# OIDC groups claim entry — it never creates missing groups. So the
+# "devops-tashtiot" group (synced from the AD security group of the same
+# name — see clusters-provision/clusters/rhbk's group-ldap-mapper) has to
+# exist in SonarQube, with the admin permission already granted, before
+# anyone's first OIDC login for that mapping to actually grant them admin.
+#
+# `post-install,post-upgrade` + `before-hook-creation` re-runs this on every
+# sync, after the SonarQube pod is up — safe to re-run, both API calls are
+# idempotent (create-if-missing / add-if-not-already-granted).
+{{- if .Values.adminGroup.name }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: sonarqube-provision-admin-group
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation
+spec:
+  backoffLimit: 20
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: provision-admin-group
+          image: curlimages/curl:8.11.0
+          env:
+            - name: SONAR_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: sonarqube-admin-password
+                  key: password
+            - name: GROUP_NAME
+              value: {{ .Values.adminGroup.name | quote }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -eu
+              SERVER="http://sonarqube-sonarqube:9000"
+
+              echo "Waiting for SonarQube to be ready..."
+              until curl -sf -u "admin:$SONAR_ADMIN_PASSWORD" "$SERVER/api/system/status" 2>/dev/null | grep -q '"status":"UP"'; do
+                echo "  not ready yet, retrying in 5s"
+                sleep 5
+              done
+
+              echo "Ensuring group '$GROUP_NAME' exists..."
+              curl -sf -u "admin:$SONAR_ADMIN_PASSWORD" -X POST "$SERVER/api/user_groups/create" \
+                --data-urlencode "name=$GROUP_NAME" >/dev/null 2>&1 || echo "  (already exists, continuing)"
+
+              echo "Granting admin permission to '$GROUP_NAME'..."
+              curl -sf -u "admin:$SONAR_ADMIN_PASSWORD" -X POST "$SERVER/api/permissions/add_group" \
+                --data-urlencode "groupName=$GROUP_NAME" \
+                --data-urlencode "permission=admin"
+              echo "Done."
+{{- end }}

@@ -38,6 +38,15 @@ sonarqube:
     annotations:
       nginx.ingress.kubernetes.io/ssl-redirect: "false"
 
+  # SonarQube Community Edition has no native OIDC/SAML support (that's an
+  # Enterprise Edition feature) — sonar-auth-oidc is the community-maintained
+  # plugin that adds generic OpenID Connect authentication to Community
+  # Edition. OIDC settings themselves (issuer/clientId/secret/redirect) are
+  # environment-specific — see devtools-definition/devtools/sonarqube.
+  plugins:
+    install:
+      - "https://github.com/sonar-auth-oidc/sonar-auth-oidc/releases/download/v3.0.0/sonar-auth-oidc-plugin-3.0.0.jar"
+
   persistence:
     enabled: true
     storageClass: gp2
@@ -75,3 +84,16 @@ adminPasswordSsmParameter: ""
 rdsAdmin:
   usernameSsmParameter: ""
   passwordSsmParameter: ""
+
+# RHBK-issued OIDC client secret for SonarQube (sonar-auth-oidc plugin) — see
+# templates/oidc-secret.yaml. Same SSM parameter
+# clusters-provision/clusters/rhbk's set-sonarqube-client-secret-job.yaml
+# reads to set the actual secret on the RHBK side via the Admin API. Set in
+# devtools-definition.
+oidcClientSecretSsmParameter: ""
+
+# AD group (synced from RHBK's LDAP group-ldap-mapper) to grant SonarQube
+# admin to via sonar-auth-oidc's groupsSync — see
+# templates/provision-admin-group-job.yaml. Set in devtools-definition.
+adminGroup:
+  name: ""
