@@ -31,11 +31,11 @@ data:
                    enableLookups="{{ .Values.jira.tomcatConfig.enableLookups | default "false" }}"
                    protocol="{{ .Values.jira.tomcatConfig.protocol | default "HTTP/1.1" }}"
                    redirectPort="{{ .Values.jira.tomcatConfig.redirectPort | default "8443" }}"
-                   acceptCount="{{ .Values.jira.tomcatConfig.acceptCount | default "100" }}"
-                   secure="{{ default (include "common.gateway.https" .) .Values.jira.tomcatConfig.secure }}"
-                   scheme="{{ default (include "common.gateway.scheme" .) .Values.jira.tomcatConfig.scheme }}"
-                   proxyName="{{ .Values.jira.tomcatConfig.proxyName | default (include "common.gateway.hostname" .)  }}"
-                   proxyPort="{{ .Values.jira.tomcatConfig.proxyPort | default (include "common.gateway.externalPort" .)  }}"
+                   acceptCount="{{ .Values.jira.tomcatConfig.acceptCount | default "10" }}"
+                   secure="{{ default (ternary "true" "false" .Values.ingress.https) .Values.jira.tomcatConfig.secure }}"
+                   scheme="{{ default (ternary "https" "http" .Values.ingress.https) .Values.jira.tomcatConfig.scheme }}"
+                   proxyName="{{ .Values.ingress.host | default .Values.jira.tomcatConfig.proxyName }}"
+                   proxyPort="{{ default (ternary "443" "80" .Values.ingress.https) .Values.jira.tomcatConfig.proxyPort }}"
 
                    relaxedPathChars="[]|"
                    relaxedQueryChars="[]|{}^\`&quot;&lt;&gt;"
@@ -44,21 +44,6 @@ data:
                    useBodyEncodingForURI="true"
                    disableUploadTimeout="true" />
 
-     {{- if .Values.jira.tunnel.additionalConnector.port }}
-     <Connector port="{{ .Values.jira.tunnel.additionalConnector.port }}"
-                connectionTimeout="{{ .Values.jira.tunnel.additionalConnector.connectionTimeout }}"
-                maxThreads="{{ .Values.jira.tunnel.additionalConnector.maxThreads }}"
-                minSpareThreads="{{ .Values.jira.tunnel.additionalConnector.minSpareThreads }}"
-                enableLookups="{{ .Values.jira.tunnel.additionalConnector.enableLookups }}"
-                acceptCount="{{ .Values.jira.tunnel.additionalConnector.acceptCount }}"
-                {{- if .Values.jira.tunnel.additionalConnector.secure }}
-                secure="true"
-                {{- end }}
-                URIEncoding="{{ .Values.jira.tunnel.additionalConnector.URIEncoding }}"
-                relaxedPathChars="[]|"
-                relaxedQueryChars="[]|{}^&#x5c;&#x60;&quot;&lt;&gt;" />
-     {{- end }}
-
         <Engine name="Catalina"
                 defaultHost="localhost">
 
@@ -66,16 +51,11 @@ data:
                 appBase="webapps"
                 unpackWARs="true"
                 autoDeploy="true">
-            <Valve className="org.apache.catalina.valves.ErrorReportValve" showReport="false" showServerInfo="false" />
-            <!--
-            suspendWrappedResponseAfterForward preserves the behavior from Tomcat 10 in Tomcat 11+ regarding the handling of wrapped responses.
-            See the changelog https://tomcat.apache.org/tomcat-11.0-doc/changelog.html#Tomcat_11.0.0-M18_(markt)/Catalina
-            -->
+
             <Context path="{{ .Values.jira.service.contextPath | default "" }}"
                      docBase="${catalina.home}/atlassian-jira"
                      reloadable="false"
-                     useHttpOnly="true"
-                     suspendWrappedResponseAfterForward="false">
+                     useHttpOnly="true">
               <Resource name="UserTransaction"
                         auth="Container"
                         type="javax.transaction.UserTransaction"
@@ -84,14 +64,12 @@ data:
               <Manager pathname=""/>
               <JarScanner scanManifest="false"/>
               <Valve className="org.apache.catalina.valves.StuckThreadDetectionValve"
-                     threshold="{{ .Values.jira.tomcatConfig.stuckThreadDetectionValveThreshold | default "120" }}" />
+                     threshold="120" />
             </Context>
 
           </Host>
           <Valve className="org.apache.catalina.valves.AccessLogValve"
-                 maxDays="{{ .Values.jira.tomcatConfig.accessLogMaxDays | default "-1" }}"
-                 requestAttributesEnabled="{{ .Values.jira.tomcatConfig.requestAttributesEnabled | default "false" }}"
-                 pattern="{{ .Values.jira.tomcatConfig.accessLogPattern }}"/>
+                 pattern="%a %{jira.request.id}r %{jira.request.username}r %t &quot;%m %U%q %H&quot; %s %b %D &quot;%{Referer}i&quot; &quot;%{User-Agent}i&quot; &quot;%{jira.request.assession.id}r&quot;"/>
         </Engine>
 
       </Service>

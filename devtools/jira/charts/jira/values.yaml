@@ -11,11 +11,10 @@
 # https://atlassian.github.io/data-center-helm-charts/userguide/INSTALLATION/#3-configure-database
 # https://atlassian.github.io/data-center-helm-charts/userguide/INSTALLATION/#5-configure-persistent-storage
 #
-# To manage external access to the Jira instance, a Gateway API HTTPRoute or an Ingress
-# resource can be configured under the 'gateway' or 'ingress' stanza respectively.
-# This requires a pre-provisioned gateway/ingress controller to be present.
+# To manage external access to the Jira instance, an ingress resource can also be configured
+# under the 'ingress' stanza. This requires a pre-provisioned ingress controller to be present.
 #
-# Additional details on configuring external access can be found here:
+# Additional details on pre-provisioning an ingress controller can be found here:
 # https://atlassian.github.io/data-center-helm-charts/userguide/INSTALLATION/#4-configure-ingress
 #
 ##
@@ -42,12 +41,6 @@ ordinals:
   # -- Set start ordinal to a positive integer, defaulting to 0.
   #
   start: 0
-
-# -- StatefulSet update strategy. When unset defaults to Rolling update.
-# See: https://kubernetes.io/docs/tutorials/stateful-application/basic-stateful-set/#updating-statefulsets
-#
-updateStrategy: {}
-  # type: OnDelete
 
 # Image configuration
 #
@@ -249,11 +242,6 @@ volumes:
     #
     mountPath: "/var/atlassian/application-data/jira"
 
-    # -- Specifies the sub-directory of the local-home volume that will be mounted in to the
-    # Jira container.
-    #
-    subPath:
-
   # A volume for 'shared-home' is required by Jira to effectively operate in multi-node
   # environment
   # https://confluence.atlassian.com/adminjiraserver/set-up-a-jira-data-center-cluster-993929600.html
@@ -270,14 +258,6 @@ volumes:
       # created for shared-home based on the 'StorageClassName' supplied below.
       #
       create: false
-
-      # -- Specify the access modes that should be used for the 'shared-home' volume claim.
-      # Note: 'ReadWriteOnce' (RWO) is suitable only for single-node installations.
-      # Be aware that changing the access mode of an existing PVC might be impossible, as the PVC spec is immutable.
-      # https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes
-      #
-      accessModes:
-        - ReadWriteMany
 
       # -- Specify the name of the 'StorageClass' that should be used for the 'shared-home'
       #volume claim.
@@ -362,9 +342,9 @@ volumes:
 
 # Ingress configuration
 #
-# Use this section when routing external traffic to Jira via a Kubernetes Ingress
-# resource (K8s Ingress API). Requires a pre-provisioned Ingress Controller.
-# If using the Gateway API instead, see the 'gateway' section below.
+# To make the Atlassian product available from outside the K8s cluster an Ingress
+# Controller should be pre-provisioned. With this in place the configuration below
+# can be used to configure an appropriate Ingress Resource.
 # https://atlassian.github.io/data-center-helm-charts/userguide/CONFIGURATION/#ingress
 #
 ingress:
@@ -373,27 +353,6 @@ ingress:
   # pre-provisioned Ingress Controller being available.
   #
   create: false
-
-  # -- The fully-qualified hostname (FQDN) of the Jira instance. This value is used
-  # to configure the product's proxy settings and, when ingress.create is true,
-  # the Ingress resource routing rules.
-  #
-  host:
-
-  # -- Whether users access the application over HTTPS. Set to 'false' if not
-  # using TLS, e.g. when reaching the service via localhost port-forwarding.
-  #
-  https: true
-
-  # -- The base path for the application, e.g. '/jira'.
-  # Defaults to 'jira.service.contextPath'.
-  #
-  path:
-
-  # ---------------------------------------------------------------------------
-  # The options below apply only when ingress.create is true.
-  # They configure the Ingress resource itself and have no effect otherwise.
-  # ---------------------------------------------------------------------------
 
   # -- Set to true if you want to create an OpenShift Route instead of an Ingress
   #
@@ -446,11 +405,28 @@ ingress:
   #
   proxySendTimeout: 60
 
+  # -- The fully-qualified hostname (FQDN) of the Ingress Resource. Traffic coming in on
+  # this hostname will be routed by the Ingress Resource to the appropriate backend
+  # Service.
+  #
+  host:
+
+  # -- The base path for the Ingress Resource. For example '/jira'. Based on a
+  # 'ingress.host' value of 'company.k8s.com' this would result in a URL of
+  # 'company.k8s.com/jira'. Default value is 'jira.service.contextPath'
+  #
+  path:
+
   # -- The custom annotations that should be applied to the Ingress Resource.
   # If using an ingress-nginx controller be sure that the annotations you add
   # here are compatible with those already defined in the 'ingess.yaml' template
   #
   annotations: {}
+
+  # -- Set to 'true' if browser communication with the application should be TLS
+  # (HTTPS) enforced.
+  #
+  https: true
 
   # -- The name of the K8s Secret that contains the TLS private key and corresponding
   # certificate. When utilised, TLS termination occurs at the ingress point where
@@ -462,129 +438,6 @@ ingress:
   # https://kubernetes.io/docs/concepts/services-networking/ingress/#tls
   #
   tlsSecretName:
-
-  # -- Additional paths to be added to the Ingress resource to point to different backend services
-  #
-  additionalPaths: []
-    #- path: /static-content
-    #  pathType: Prefix
-    #  service: static-content-svc
-    #  portNumber: 80
-
-# Gateway API configuration
-#
-# Use this section when routing external traffic to Jira via the Kubernetes
-# Gateway API, or when using an external proxy/load balancer without creating
-# any K8s routing resource. Only one of 'ingress' or 'gateway' should be used.
-# https://gateway-api.sigs.k8s.io/
-#
-gateway:
-
-  # -- Set to 'true' if an HTTPRoute Resource should be created. This depends on a
-  # pre-provisioned Gateway API controller being available and a Gateway resource.
-  # Cannot be enabled if ingress.create is true.
-  #
-  create: false
-
-  # -- The hostnames that should be routed to Jira. At least one hostname
-  # is required when gateway.create is true. Setting hostnames activates gateway
-  # mode for product configuration even when gateway.create is false, allowing
-  # use with a pre-existing Gateway or external proxy.
-  # The first entry is used as the canonical hostname for base URL, proxy
-  # settings, and NOTES output — list the primary/public hostname first.
-  #
-  hostnames: []
-  # - jira.example.com
-  # - jira-prod.example.com
-
-  # -- Whether users access the application over HTTPS.
-  # This does not configure TLS on the Gateway or load balancer — it must match
-  # how traffic is actually routed to the application.
-  #
-  https: true
-
-  # -- The port users connect on. Defaults to 443 (https) or 80 (http).
-  # This does not change the Gateway or load balancer port — it must match
-  # the port that is actually used. Only set for non-standard ports.
-  #
-  # externalPort:
-
-  # -- The base path for routing. When empty, falls back to the product's
-  # service.contextPath (same behavior as ingress). Set explicitly to
-  # override, e.g. "/jira".
-  #
-  path:
-
-  # ---------------------------------------------------------------------------
-  # The options below apply only when gateway.create is true.
-  # They configure the HTTPRoute resource and have no effect otherwise.
-  # ---------------------------------------------------------------------------
-
-  # -- Reference to the parent Gateway resource. Supports any standard
-  # parentRef fields (name, namespace, sectionName, etc.).
-  # See: https://gateway-api.sigs.k8s.io/reference/spec/#gateway.networking.k8s.io/v1.ParentReference
-  #
-  parentRefs: []
-    # - name: example-gateway
-    #   namespace: example-gateway-namespace
-    #   sectionName: https
-
-  # -- Path matching type. Can be "PathPrefix", "Exact", or "RegularExpression".
-  # PathPrefix is recommended for most use cases.
-  #
-  pathType: "PathPrefix"
-
-  # -- Annotations to add to the HTTPRoute resource.
-  #
-  annotations: {}
-  # kubernetes.io/ingress.class: gateway
-  # cert-manager.io/cluster-issuer: letsencrypt
-
-  # -- Labels to add to the HTTPRoute resource.
-  #
-  labels: {}
-  # environment: production
-  # team: platform
-
-  # -- HTTP filters to apply to requests. Can be used to add/remove headers,
-  # perform redirects, or rewrite URLs.
-  # See: https://gateway-api.sigs.k8s.io/reference/spec/#gateway.networking.k8s.io/v1.HTTPRouteFilter
-  #
-  filters: []
-  # - type: RequestHeaderModifier
-  #   requestHeaderModifier:
-  #     add:
-  #     - name: X-Forwarded-Proto
-  #       value: https
-
-  # -- Advanced routing rules. Use this for complex routing scenarios like
-  # header-based routing, traffic splitting, or multiple backends.
-  # See: https://gateway-api.sigs.k8s.io/reference/spec/#gateway.networking.k8s.io/v1.HTTPRouteRule
-  #
-  additionalRules: []
-  # - matches:
-  #   - path:
-  #       type: PathPrefix
-  #       value: /api
-  #   backendRefs:
-  #   - name: jira-api
-  #     port: 8080
-
-  # -- Session affinity (sticky sessions) is required for Atlassian DC products but
-  # is not part of the standard Gateway API HTTPRoute spec. It must be configured
-  # separately through your Gateway implementation's own policy resources.
-  # See docs/docs/examples/ingress/GATEWAY_API_SESSION_AFFINITY.md for working examples.
-
-  # -- Timeout configuration for HTTPRoute rules.
-  # Note: when migrating from Ingress, these replace proxyReadTimeout and
-  # proxySendTimeout. There is no Gateway API equivalent for
-  # proxyConnectTimeout or maxBodySize — those require controller-specific
-  # policies (e.g. Envoy Gateway BackendTrafficPolicy).
-  # See: https://gateway-api.sigs.k8s.io/reference/spec/#gateway.networking.k8s.io/v1.HTTPRouteTimeouts
-  #
-  timeouts:
-    request: "60s"
-    backendRequest: "60s"
 
 # Jira configuration
 #
@@ -605,10 +458,6 @@ jira:
     # -- The type of K8s service to use for Jira
     #
     type: ClusterIP
-
-    # --  Only applicable if service.type is NodePort. NodePort for Jira service
-    #
-    nodePort:
 
     # -- Session affinity type. If you want to make sure that connections from a particular client
     # are passed to the same pod each time, set sessionAffinity to ClientIP.
@@ -657,12 +506,6 @@ jira:
     # However, this doesn't appear to work for NFS volumes due to a K8s bug: https://github.com/kubernetes/examples/issues/260
     #
     fsGroup: 2001
-
-    # -- fsGroupChangePolicy defines behavior for changing ownership and permission of the volume before being exposed inside a Pod.
-    # This field only applies to volume types that support fsGroup controlled ownership and permissions.
-    # https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#configure-volume-permission-and-ownership-change-policy-for-pods
-    #
-    fsGroupChangePolicy: "OnRootMismatch"
 
   # -- Standard K8s field that holds security configurations that will be applied to a container.
   # https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
@@ -791,64 +634,24 @@ jira:
     #
     localHomeSubPath: "log"
 
-  # Use AWS S3 to store avatars and attachments. From Jira 9.9 onwards.
+  # Use AWS S3 to store avatars. From Jira 9.9 onwards.
   #
 
   s3Storage:
 
     avatars:
-      # -- Bucket name to store avatars. If a bucket name and region (see below) are defined, Jira will automatically
+      # Bucket name to store avatars. If a bucket name and region (see below) are defined, Jira will automatically
       # use AWS S3 to store avatars. Only bucket name is required, not the full arn.
       #
       bucketName:
 
-      # -- AWS region where the S3 bucket is located.
+      # AWS region where the S3 bucket is located.
       #
       bucketRegion:
 
-      # -- Override the default AWS API endpoint with a custom one
+      # Override the default AWS API endpoint with a custom one
       #
       endpointOverride:
-
-    attachments:
-      # -- Bucket name to store attachments. If a bucket name and region (see below) are defined, Jira will automatically
-      # use AWS S3 to store attachments. Only bucket name is required, not the full arn.
-      # If you provide the same bucket name for both avatars and attachments, they will be stored in the same bucket
-      #
-      bucketName:
-
-      # -- AWS region where the S3 bucket is located.
-      #
-      bucketRegion:
-
-      # -- Override the default AWS API endpoint with a custom one
-      #
-      endpointOverride:
-
-    backups:
-      # -- Bucket name to store backups. If a bucket name and region (see below) are defined, Jira will automatically
-      # use AWS S3 to store backups. Only bucket name is required, not the full arn.
-      # If you provide the same bucket name for both avatars and backups, they will be stored in the same bucket
-      #
-      bucketName:
-
-      # -- AWS region where the S3 bucket is located.
-      #
-      bucketRegion:
-
-      # -- Override the default AWS API endpoint with a custom one
-      #
-      endpointOverride:
-
-  session:
-
-    # -- User session timeout. Set to 30 minutes in web.xml
-    #
-    timeout:
-
-    # -- The maximum time a user can remain logged-in with 'Remember Me'. Defaults to 1209600; two weeks, in seconds
-    #
-    autologinCookieAge:
 
   # Data Center clustering
   #
@@ -957,20 +760,16 @@ jira:
     enableLookups: "false"
     protocol: "HTTP/1.1"
     redirectPort: "8443"
-    acceptCount: "100"
-    # secure is set based on the https setting (gateway.https or ingress.https)
+    acceptCount: "10"
+    # secure is retrieved from ingress.https value
     secure:
-    # scheme is set based on the https setting (http if false, https if true)
+    # scheme is set depending on ingress.https value (http if false, https if true)
     scheme:
-    # proxyName is set to the configured hostname (gateway.hostnames[0] or ingress.host)
+    # proxyName is retrieved from ingress.host value
     proxyName:
-    # proxyPort is set to the external port (defaults to 443 for https, 80 for http)
+    # proxyPort is set depending on ingress.https value (80 if http, 443 if https)
     proxyPort:
     maxHttpHeaderSize: "8192"
-    stuckThreadDetectionValveThreshold: "120"
-    accessLogMaxDays: "-1"
-    accessLogPattern: "%a %{jira.request.id}r %{jira.request.username}r %t &quot;%m %U%q %H&quot; %s %b %D &quot;%{Referer}i&quot; &quot;%{User-Agent}i&quot; &quot;%{jira.request.assession.id}r&quot;"
-    requestAttributesEnabled: "false"
 
     # -- Custom server.xml to be mounted into /opt/atlassian/jira/conf
     #
@@ -1026,34 +825,11 @@ jira:
   #
   additionalVolumeMounts: []
 
-  # -- Additional properties to inject into jira-config.properties at container
-  # startup via ADDITIONAL_JIRA_CONFIG_* environment variables.
-  # Each entry is a "key=value" property line. Environment variable names are
-  # sorted for consistent file generation; order has no effect on runtime behavior.
-  #
-  # Requires a Jira container image version that supports ADDITIONAL_JIRA_CONFIG_*.
-  #
-  additionalConfigProperties: []
-  #  - "jira.websudo.is.disabled=true"
-  #  - "jira.lf.top.bgcolour=#003366"
-
-  # -- Additional properties requiring environment variable expansion at
-  # container startup. Values containing {VAR_NAME} placeholders will be
-  # replaced with the corresponding environment variable value.
-  # Useful for injecting secrets without hardcoding them in values.
-  #
-  additionalConfigPropertiesExpandEnv: []
-  #  - "opensearch.password={OPENSEARCH_ADMIN_PASSWORD}"
-
   # -- Defines any additional environment variables to be passed to the Jira
   # container. See https://hub.docker.com/r/atlassian/jira-software for
   # supported variables.
   #
   additionalEnvironmentVariables: []
-
-  # -- Defines additional annotations to the Jira StateFulSet. This might be required when deploying using a GitOps approach
-  additionalAnnotations: {}
-  #  argocd.argoproj.io/sync-wave: "10"
 
   # -- Defines any additional ports for the Jira container.
   #
@@ -1086,49 +862,8 @@ jira:
   # -- Certificates to be added to Java truststore. Provide reference to a secret that contains the certificates
   #
   additionalCertificates:
-    # -- Name of the Kubernetes secret with certificates in its data. All secret keys in the secret data
-    # will be treated as certificates to be added to Java truststore. If defined, this takes precedence over secretList.
-    #
     secretName:
-    # -- A list of secrets with their respective keys holding certificates to be added to the Java truststore.
-    # It is mandatory to specify which keys from secret data need to be mounted as files to the init container.
-    #
-    secretList: []
-    #- name: self-signed-ca
-    #  keys:
-    #    - ca.crt
-    #    - intermediate.crt
-    #- name: stg-intermediate
-    #  keys:
-    #    - stg.crt
-
-    # -- Custom command to be executed in the init container to import certificates
-    #
     customCmd:
-
-    initContainer:
-      # -- Resources allocated to the import-certs init container
-      #
-
-      resources: {}
-      # -- Custom SecurityContext for the import-certs init container
-      #
-      securityContext: {}
-
-  # -- Configure additional Tomcat connector to set up tunnel. Define the connector port and optional additional attributes.
-  # When 'tunnel.additionalConnector.port' is defined, an additional connector is added to server.xml
-  # and '-Dsecure.tunnel.upstream.port=<port_number>' is added to JVM args
-  #
-  tunnel:
-    additionalConnector:
-      port:
-      connectionTimeout: "20000"
-      maxThreads: "50"
-      minSpareThreads: "10"
-      enableLookups: "false"
-      acceptCount: "10"
-      URIEncoding: "UTF-8"
-      secure: false
 
 # Monitoring
 #
@@ -1141,11 +876,6 @@ monitoring:
   # --  JMX exporter init container configuration
   #
   jmxExporterInitContainer:
-
-    # -- The location of the JMX exporter jarfile in the JMX exporter image
-    # Leave blank for default bitnami image
-    #
-    jmxJarLocation:
 
     # -- Whether to run JMX exporter init container as root to copy JMX exporter binary to shared home volume.
     # Set to false if running containers as root is not allowed in the cluster.
@@ -1178,10 +908,11 @@ monitoring:
 
   # -- Image repository with jmx_exporter jar
   #
-  jmxExporterImageRepo: bitnamilegacy/jmx-exporter
+  jmxExporterImageRepo: bitnami/jmx-exporter
+
+  # -- Image tag to be used to pull jmxExporterImageRepo
+  #
   jmxExporterImageTag: 0.18.0
-
-
 
   # -- Port number on which metrics will be available
   #
@@ -1215,10 +946,6 @@ monitoring:
     # -- Scrape interval for the JMX service.
     #
     scrapeIntervalSeconds: 30
-
-    # -- How long until a scrape request times out. It cannot be greater than the scrape interval.
-    #
-    scrapeTimeoutSeconds: 20
 
   grafana:
 
@@ -1366,10 +1093,6 @@ schedulerName:
 #
 priorityClassName:
 
-# -- Share host namespaces which may include hostNetwork, hostIPC, and hostPID
-#
-hostNamespaces: {}
-
 # -- Additional container definitions that will be added to all Jira pods
 #
 additionalContainers: []
@@ -1485,37 +1208,3 @@ openshift:
   # configuration files as ConfigMaps.
   #
   runWithRestrictedSCC: false
-
-opensearch:
-
-  # -- Deploy OpenSearch Helm chart and Configure Jira to use it as a search platform
-  #
-  enabled: false
-
-  credentials:
-    # -- Let the Helm chart create a secret with an auto generated initial admin password
-    #
-    createSecret: true
-
-    # -- Use an existing secret with the key OPENSEARCH_INITIAL_ADMIN_PASSWORD holding the initial admin password
-    #
-    existingSecretRef:
-      name:
-
-  # -- OpenSearch helm specific values, see: https://github.com/opensearch-project/helm-charts/blob/main/charts/opensearch/values.yaml
-  #
-  singleNode: true
-  resources:
-    requests:
-      cpu: 1
-      memory: 1Gi
-  persistence:
-    size: 10Gi
-  extraEnvs:
-    - name: plugins.security.ssl.http.enabled
-      value: "false"
-  envFrom:
-    - secretRef:
-         # -- If using a pre-created secret, make sure to change secret name to match opensearch.credentials.existingSecretRef.name
-         #
-         name: opensearch-initial-password

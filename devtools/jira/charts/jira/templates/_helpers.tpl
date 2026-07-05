@@ -8,54 +8,6 @@
 {{- end }}
 {{- end }}
 
-{{- define "jira.sessionVars"}}
-{{- if .Values.jira.session.timeout }}
-- name: ATL_JIRA_SESSION_TIMEOUT
-  value: {{ .Values.jira.session.timeout | int | quote }}
-{{- end }}
-{{- if .Values.jira.session.autologinCookieAge }}
-- name: ATL_AUTOLOGIN_COOKIE_AGE
-  value: {{ .Values.jira.session.autologinCookieAge | int| quote }}
-{{- end }}
-{{- end }}
-
-{{- define "jira.tunnelVars"}}
-{{- if .Values.jira.tunnel.additionalConnector.port }}
-{{- with .Values.jira.tunnel.additionalConnector.port }}
-- name: ATL_TOMCAT_ADDITIONAL_CONNECTOR_PORT
-  value: {{ . | quote }}
-{{- end }}
-{{- with .Values.jira.tunnel.additionalConnector.connectionTimeout }}
-- name: ATL_TOMCAT_ADDITIONAL_CONNECTOR_CONNECTION_TIMEOUT
-  value: {{ . | quote }}
-{{- end }}
-{{- with .Values.jira.tunnel.additionalConnector.maxThreads }}
-- name: ATL_TOMCAT_ADDITIONAL_CONNECTOR_MAX_THREADS
-  value: {{ . | quote }}
-{{- end }}
-{{- with .Values.jira.tunnel.additionalConnector.minSpareThreads }}
-- name: ATL_TOMCAT_ADDITIONAL_CONNECTOR_MIN_SPARE_THREADS
-  value: {{ . | quote }}
-{{- end }}
-{{- with .Values.jira.tunnel.additionalConnector.enableLookups }}
-- name: ATL_TOMCAT_ADDITIONAL_CONNECTOR_ENABLE_LOOKUPS
-  value: {{ . | quote }}
-{{- end }}
-{{- with .Values.jira.tunnel.additionalConnector.acceptCount }}
-- name: ATL_TOMCAT_ADDITIONAL_CONNECTOR_ACCEPT_COUNT
-  value: {{ . | quote }}
-{{- end }}
-{{- with .Values.jira.tunnel.additionalConnector.secure }}
-- name: ATL_TOMCAT_ADDITIONAL_CONNECTOR_SECURE
-  value: {{ . | quote }}
-{{- end }}
-{{- with .Values.jira.tunnel.additionalConnector.URIEncoding }}
-- name: ATL_TOMCAT_ADDITIONAL_CONNECTOR_URI_ENCODING
-  value: {{ . | quote }}
-{{- end }}
-{{- end }}
-{{- end }}
-
 {{/* Define a sanitized list of additionalJvmArgs */}}
 {{- define "jira.sanitizedAdditionalJvmArgs" -}}
 {{- range .Values.jira.additionalJvmArgs }}
@@ -109,22 +61,21 @@
 {{- end }}
 
 {{/*
-Create default value for the service path.
+Create default value for ingress port
 */}}
-{{- define "jira.path" -}}
-{{- include "common.gateway.path" (dict
-  "useGatewayMode" (include "common.gateway.useGatewayMode" .)
-  "gatewayPath"   .Values.gateway.path
-  "ingressPath"   .Values.ingress.path
-  "contextPath"   .Values.jira.service.contextPath
-) -}}
+{{- define "jira.ingressPort" -}}
+{{ default (ternary "443" "80" .Values.ingress.https) .Values.ingress.port -}}
 {{- end }}
 
 {{/*
-Alias for backward compatibility with ingress templates.
+Create default value for ingress path
 */}}
 {{- define "jira.ingressPath" -}}
-{{- include "jira.path" . -}}
+{{- if .Values.ingress.path -}}
+{{- .Values.ingress.path -}}
+{{- else -}}
+{{ default ( "/" ) .Values.jira.service.contextPath -}}
+{{- end }}
 {{- end }}
 
 {{/*
@@ -201,9 +152,6 @@ on Tomcat's logs directory. THis ensures that Tomcat+Jira logs get captured in t
 {{ define "jira.volumeMounts" }}
 - name: local-home
   mountPath: {{ .Values.volumes.localHome.mountPath | quote }}
-  {{- if .Values.volumes.localHome.subPath }}
-  subPath: {{ .Values.volumes.localHome.subPath | quote }}
-  {{- end }}
 - name: local-home
   mountPath: {{ .Values.jira.accessLog.mountPath | quote }}
   subPath: {{ .Values.jira.accessLog.localHomeSubPath | quote }}
@@ -226,7 +174,7 @@ on Tomcat's logs directory. THis ensures that Tomcat+Jira logs get captured in t
   mountPath: /opt/atlassian/jira/atlassian-jira/WEB-INF/classes/seraph-config.xml
   subPath: seraph-config.xml
 {{- end }}
-{{- if or .Values.jira.additionalCertificates.secretName .Values.jira.additionalCertificates.secretList }}
+{{- if .Values.jira.additionalCertificates.secretName }}
 - name: keystore
   mountPath: /var/ssl
 {{- end }}
@@ -291,20 +239,6 @@ Define additional environment variables here to allow template overrides when us
 {{- end }}
 
 {{/*
-Renders ADDITIONAL_JIRA_CONFIG_* environment variables from additionalConfigProperties values
-*/}}
-{{- define "jira.additionalConfigProperties" -}}
-{{- range $index, $prop := .Values.jira.additionalConfigProperties }}
-- name: {{ printf "ADDITIONAL_JIRA_CONFIG_HELM_%03d" $index }}
-  value: {{ $prop | quote }}
-{{- end }}
-{{- range $index, $prop := .Values.jira.additionalConfigPropertiesExpandEnv }}
-- name: {{ printf "ADDITIONAL_JIRA_CONFIG_HELM_%03d__EXPAND_ENV" $index }}
-  value: {{ $prop | quote }}
-{{- end }}
-{{- end }}
-
-{{/*
 For each additional library declared, generate a volume mount that injects that library into the Jira lib directory
 */}}
 {{- define "jira.additionalLibraries" -}}
@@ -362,20 +296,12 @@ For each additional plugin declared, generate a volume mount that injects that l
       - key: seraph-config.xml
         path: seraph-config.xml
 {{- end }}
-{{- if or .Values.jira.additionalCertificates.secretName .Values.jira.additionalCertificates.secretList }}
+{{- if .Values.jira.additionalCertificates.secretName }}
 - name: keystore
   emptyDir: {}
-{{- if .Values.jira.additionalCertificates.secretName }}
 - name: certs
   secret:
     secretName: {{ .Values.jira.additionalCertificates.secretName }}
-{{- else }}
-{{- range .Values.jira.additionalCertificates.secretList }}
-- name: {{ .name }}
-  secret:
-    secretName: {{ .name }}
-{{- end }}
-{{- end }}
 {{- end }}
 {{- if or .Values.atlassianAnalyticsAndSupport.analytics.enabled .Values.atlassianAnalyticsAndSupport.helmValues.enabled }}
 - name: helm-values
@@ -428,9 +354,7 @@ persistentVolumeClaimRetentionPolicy:
 {{- end}}
 volumeClaimTemplates:
 {{- if .Values.volumes.localHome.persistentVolumeClaim.create }}
-- apiVersion: v1
-  kind: PersistentVolumeClaim
-  metadata:
+- metadata:
     name: local-home
   spec:
     accessModes: [ "ReadWriteOnce" ]
@@ -467,26 +391,6 @@ volumeClaimTemplates:
 {{- if .Values.jira.s3Storage.avatars.endpointOverride }}
 - name: ATL_S3AVATARS_ENDPOINT_OVERRIDE
   value: {{ .Values.jira.s3Storage.avatars.endpointOverride | quote }}
-{{- end }}
-{{- end }}
-{{- if and .Values.jira.s3Storage.attachments.bucketName .Values.jira.s3Storage.attachments.bucketRegion }}
-- name: ATL_S3ATTACHMENTS_BUCKET_NAME
-  value: {{ .Values.jira.s3Storage.attachments.bucketName | quote }}
-- name: ATL_S3ATTACHMENTS_REGION
-  value: {{ .Values.jira.s3Storage.attachments.bucketRegion | quote }}
-{{- if .Values.jira.s3Storage.attachments.endpointOverride }}
-- name: ATL_S3ATTACHMENTS_ENDPOINT_OVERRIDE
-  value: {{ .Values.jira.s3Storage.attachments.endpointOverride | quote }}
-{{- end }}
-{{- end }}
-{{- if and .Values.jira.s3Storage.backups.bucketName .Values.jira.s3Storage.backups.bucketRegion }}
-- name: ATL_S3BACKUPS_BUCKET_NAME
-  value: {{ .Values.jira.s3Storage.backups.bucketName | quote }}
-- name: ATL_S3BACKUPS_REGION
-  value: {{ .Values.jira.s3Storage.backups.bucketRegion | quote }}
-{{- if .Values.jira.s3Storage.backups.endpointOverride }}
-- name: ATL_S3BACKUPS_ENDPOINT_OVERRIDE
-  value: {{ .Values.jira.s3Storage.backups.endpointOverride | quote }}
 {{- end }}
 {{- end }}
 {{- end }}
@@ -558,45 +462,5 @@ volumeClaimTemplates:
 {{ .Values.jira.additionalCertificates.customCmd}}
 {{- else }}
 set -e; cp $JAVA_HOME/lib/security/cacerts /var/ssl/cacerts; chmod 664 /var/ssl/cacerts; for crt in /tmp/crt/*.*; do echo "Adding $crt to keystore"; keytool -import -keystore /var/ssl/cacerts -storepass changeit -noprompt -alias $(echo $(basename $crt)) -file $crt; done;
-{{- end }}
-{{- end }}
-
-{{- define "generate_static_password_b64enc" -}}
-{{- if not (index .Release "temp_vars") -}}
-{{-   $_ := set .Release "temp_vars" dict -}}
-{{- end -}}
-{{- $key := printf "%s_%s" .Release.Name "password" -}}
-{{- if not (index .Release.temp_vars $key) -}}
-{{-   $_ := set .Release.temp_vars $key (randAlphaNum 40 | b64enc ) -}}
-{{- end -}}
-{{- index .Release.temp_vars $key -}}
-{{- end -}}
-
-{{- define "opensearch.initial.admin.password" }}
-{{- $defaultSecretName := "opensearch-initial-password" }}
-{{- $secretName := default $defaultSecretName .Values.opensearch.credentials.existingSecretRef.name }}
-{{- $secretData := (lookup "v1" "Secret" .Release.Namespace $secretName) }}
-{{- if $secretData.data }}
-{{- index $secretData.data "OPENSEARCH_INITIAL_ADMIN_PASSWORD" }}
-{{- else }}
-{{ include "generate_static_password_b64enc" . }}
-{{- end }}
-{{- end }}
-
-{{- define "opensearch.env.vars" }}
-{{- if .Values.opensearch.enabled }}
-- name: ADDITIONAL_JIRA_CONFIG_SEARCH_PLATFORM
-  value: "search.platform=opensearch"
-- name: ADDITIONAL_JIRA_CONFIG_SEARCH_URL
-  value: "opensearch.http.url=http://opensearch-cluster-master:9200"
-- name: ADDITIONAL_JIRA_CONFIG_SEARCH_USERNAME
-  value: "opensearch.username=admin"
-- name: OPENSEARCH_ADMIN_PASSWORD
-  valueFrom:
-    secretKeyRef:
-      name: {{ .Values.opensearch.credentials.existingSecretRef.name | default "opensearch-initial-password" }}
-      key: OPENSEARCH_INITIAL_ADMIN_PASSWORD
-- name: ADDITIONAL_JIRA_CONFIG_SEARCH_PASSWORD__EXPAND_ENV
-  value: "opensearch.password={OPENSEARCH_ADMIN_PASSWORD}"
 {{- end }}
 {{- end }}
