@@ -20,6 +20,16 @@ example-fast-api:
   grafana:
     enabled: false
 
+  # Cloudflare tunnel: devops-api.devopstashtiot.page → nginx-ingress → devops-api
+  # (DNS CNAME already created in Cloudflare; cloudflared itself only has one
+  # catch-all rule forwarding to ingress-nginx, which routes by Host header).
+  ingress:
+    enabled: true
+    className: nginx
+    host: devops-api.devopstashtiot.page
+    annotations:
+      nginx.ingress.kubernetes.io/ssl-redirect: "false"
+
   # No ClusterSecretStore named "vault-cluster-secret-store" exists on this
   # platform (only "aws-parameter-store", via external-secrets-operator) and
   # this app needs no secrets beyond its image — leave disabled.
