@@ -5,7 +5,14 @@ confluence:
 
   image:
     repository: atlassian/confluence
-    tag: "9.3.1"
+    # 9.3.1 hit a startup bug: PluginFrameworkContextListener consistently
+    # raced against the async Spring root context bootstrap
+    # ("Spring Application context has not been set"), breaking Soy-template
+    # rendering (login page, setup wizard) on ~6 of 7 observed boots. Ruled
+    # out memory/CPU sizing, plugin cache corruption, and a full clean
+    # reinstall (fresh PVC + DB) as causes — identical failure every time.
+    # Trying 9.3.2 (next bug-fix release) as a version-specific fix.
+    tag: "9.3.2"
 
   database:
     type: postgresql
