@@ -1,0 +1,90 @@
+{{- $root := . -}}
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "api.name" . }}
+  namespace: {{include "api.namespaceName" .}}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "api.labels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "api.labels" . | nindent 8 }}
+    spec:
+      {{- if not .Values.vault.enabled }}
+      volumes:
+      {{- range .Values.extraConfigmapMounts }}
+      - name: {{ tpl .name $root }}
+        configMap:
+          name: {{ tpl .configMap $root }}
+          {{- with .optional }}
+          optional: {{ . }}
+          {{- end }}
+          {{- with .items }}
+          items:
+            {{- toYaml . | nindent 8 }}
+          {{- end }}
+      {{- end }}
+      {{- range .Values.extraSecretMounts }}
+      - name: {{ tpl .name $root }}
+        secret:
+          secretName: {{ tpl .secretName $root }}
+          defaultMode: {{ .defaultMode }}
+          {{- with .optional }}
+          optional: {{ . }}
+          {{- end }}
+          {{- with .items }}
+          items:
+            {{- toYaml . | nindent 8 }}
+            {{- end }}
+      {{- end }}
+      {{- end }}
+      containers:
+      - name: fastapi-app
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - containerPort: 5000
+          name: http
+        {{- if not .Values.vault.enabled }}
+        volumeMounts:
+        {{- range .Values.extraConfigmapMounts }}
+        - name: {{ tpl .name $root }}
+          mountPath: {{ tpl .mountPath $root }}
+          subPath: {{ tpl (.subPath | default "") $root }}
+          readOnly: {{ .readOnly }}
+        {{- end }}
+        {{- range .Values.extraSecretMounts }}
+        - name: {{ tpl .name $root }}
+          mountPath: {{ tpl .mountPath $root }}
+          subPath: {{ tpl (.subPath | default "") $root }}
+          readOnly: {{ .readOnly }}
+        {{- end }}
+        {{- end }}
+        envFrom:
+        - configMapRef:
+            name: {{ include "api.name" . }}-env
+        {{- if .Values.vault.enabled }}
+        - secretRef:
+            name: {{ include "api.name" . }}-secrets
+        {{- end }}
+        {{- with .Values.resources }}
+        resources:
+          {{- toYaml .Values.resources | nindent 10 }}
+        {{- end }}
+        readinessProbe:
+          httpGet:
+            path: /healthcheck
+            port: 5000
+          initialDelaySeconds: 10
+          periodSeconds: 60
+        livenessProbe:
+          httpGet:
+            path: /healthcheck
+            port: 5000
+          initialDelaySeconds: 10
+          periodSeconds: 60

@@ -1,0 +1,5 @@
+apiVersion: v2
+name: example-fast-api
+description: A Helm chart for deploying generic FastAPI-based DNS API
+version: 1.0.0
+appVersion: "3.0"

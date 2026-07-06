@@ -1,0 +1,70 @@
+releasename: testapi
+replicaCount: 1
+
+image:
+  repository: dns-api
+  tag: "7.0"
+  pullPolicy: IfNotPresent
+
+resources: []
+  # limits:
+  #   cpu: "500m"
+  #   memory: "256Mi"
+  # requests:
+  #   cpu: "250m"
+  #   memory: "128Mi"
+
+
+servicemonitor:
+  enabled: true
+  interval: 30s
+  release: my-prometheus-operator
+
+env:
+  VAR_ONE: "value1"
+  VAR_TWO: "value2"
+  VAR_THREE: "value3"
+
+# grafana
+grafana:
+  enabled: true
+  labelForReloader: grafana_dashboard
+
+vault:
+  enabled: false
+  clusterSecretStore: vault-cluster-secret-store
+
+  secrets: []
+    # Example secret
+    # - secretKey: AWX_TOKEN
+    #   remoteRef:
+    #     key: ds/awx
+    #     property: awx_token
+    # - secretKey: AWX_HOST
+    #   remoteRef:
+    #     key: ds/awx
+    #     property: awx_host
+
+# Extra configmaps to mount in API pods
+# Values are templated.
+extraConfigmapMounts: 
+  - name: my-config
+    mountPath: /etc/config/extra/
+    subPath: extra-config.yaml
+    configMap: my-config
+    readOnly: true
+    optional: false
+  #   mountPath: /etc/grafana/ssl/
+  #   subPath: certificates.crt # (optional)
+  #   configMap: certs-configmap
+  #   readOnly: true
+  #   optional: false
+
+# Defines additional mounts with secrets. Secrets must be manually created in the namespace.
+extraSecretMounts: []
+  # - name: secret-files
+  #   mountPath: /etc/secrets
+  #   secretName: grafana-secret-files
+  #   readOnly: true
+  #   optional: false
+  #   subPath: ""
