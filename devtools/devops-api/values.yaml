@@ -30,11 +30,44 @@ example-fast-api:
     annotations:
       nginx.ingress.kubernetes.io/ssl-redirect: "false"
 
-  # No ClusterSecretStore named "vault-cluster-secret-store" exists on this
-  # platform (only "aws-parameter-store", via external-secrets-operator) and
-  # this app needs no secrets beyond its image — leave disabled.
+  # devops-api authenticates to Bitbucket/Confluence/Jira/SonarQube/Git as
+  # the same AD/LDAP bind account everywhere, so every *_USERNAME/*_PASSWORD
+  # field is sourced once from the shared SSM params below via
+  # external-secrets-operator's "aws-parameter-store" ClusterSecretStore —
+  # never hardcoded here. GIT_TOKEN and ARTIFACTORY_API_TOKEN are bearer
+  # tokens, not username/password pairs, so they're left blank in the env
+  # block below and set per environment in devtools-definition instead.
   vault:
-    enabled: false
+    enabled: true
+    clusterSecretStore: aws-parameter-store
+    secrets:
+      - secretKey: BITBUCKET_USERNAME
+        remoteRef:
+          key: /devtools/domain-controller/ldap-bind-username
+      - secretKey: BITBUCKET_PASSWORD
+        remoteRef:
+          key: /devtools/domain-controller/ldap-bind-password
+      - secretKey: CONFLUENCE_USERNAME
+        remoteRef:
+          key: /devtools/domain-controller/ldap-bind-username
+      - secretKey: CONFLUENCE_PASSWORD
+        remoteRef:
+          key: /devtools/domain-controller/ldap-bind-password
+      - secretKey: JIRA_USERNAME
+        remoteRef:
+          key: /devtools/domain-controller/ldap-bind-username
+      - secretKey: JIRA_PASSWORD
+        remoteRef:
+          key: /devtools/domain-controller/ldap-bind-password
+      - secretKey: SONARQUBE_USERNAME
+        remoteRef:
+          key: /devtools/domain-controller/ldap-bind-username
+      - secretKey: SONARQUBE_PASSWORD
+        remoteRef:
+          key: /devtools/domain-controller/ldap-bind-password
+      - secretKey: GIT_USERNAME
+        remoteRef:
+          key: /devtools/domain-controller/ldap-bind-username
 
   # image, env set per environment in devtools-definition.
   image:
@@ -42,15 +75,49 @@ example-fast-api:
     tag: ""
     pullPolicy: IfNotPresent
 
-  # Explicit nulls, not `env: {}` — Helm merges maps key-by-key, so an empty
-  # map wouldn't clear the chart's own placeholder VAR_ONE/TWO/THREE defaults.
+  # Every non-credential value from devops-api/.env. Username/password
+  # fields are deliberately absent here — they come from the ExternalSecret
+  # above instead (see vault.secrets). Explicit nulls clear the chart's own
+  # placeholder VAR_ONE/TWO/THREE defaults — Helm merges maps key-by-key, so
+  # they'd otherwise survive alongside these. Every other key is left blank
+  # here and set per environment in devtools-definition (see that repo's
+  # devops-api/values.yaml), matching every other tool's provision/definition
+  # split on this platform.
   env:
     VAR_ONE: null
     VAR_TWO: null
     VAR_THREE: null
 
+    ARTIFACTORY_API_URL: ""
+    ARTIFACTORY_API_TOKEN: ""
+    ARTIFACTORY_LDAP_SETTING_NAME: ""
+    ARTIFACTORY_S3_XRAY_UPDATES_BASE_URL: ""
+
+    BITBUCKET_API_URL: ""
+
+    CONFLUENCE_API_URL: ""
+    CONFLUENCE_S3_PLUGINS_BASE_URL: ""
+    CONFLUENCE_S3_IMPORTS_BASE_URL: ""
+
+    JIRA_API_URL: ""
+
+    SONARQUBE_API_URL: ""
+
+    ARGOCD_ALLOWED_ENVS: ""
+    ARGOCD_CLUSTER_SECRET_REPO_URL: ""
+
+    GIT_API_URL: ""
+    GIT_TOKEN: ""
+    GIT_PROJECT_KEY: ""
+    GIT_SSH_KEY_PATH: ""
+    GIT_SSH_PORT: ""
+
+    DOMAIN_SUFFIX: ""
+
   # Chart ships a broken example mount by default (references a "my-config"
   # ConfigMap that doesn't exist) — must stay empty unless a real configmap
-  # is added.
+  # is added. Irrelevant while vault.enabled is true anyway: the deployment
+  # template only renders extraConfigmapMounts/extraSecretMounts volumes
+  # when vault is disabled.
   extraConfigmapMounts: []
   extraSecretMounts: []

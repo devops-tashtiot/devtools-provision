@@ -86,9 +86,9 @@ rdsAdmin:
   passwordSsmParameter: ""
 
 # RHBK-issued OIDC client secret for SonarQube (sonar-auth-oidc plugin) — see
-# templates/oidc-secret.yaml. Same SSM parameter
-# clusters-provision/clusters/rhbk's set-sonarqube-client-secret-job.yaml
-# reads to set the actual secret on the RHBK side via the Admin API. Set in
+# templates/oidc-secret.yaml. Same shared SSM parameter
+# clusters-provision/clusters/rhbk's set-client-secrets-job.yaml reads to set
+# the actual secret on the RHBK side via the Admin API. Set in
 # devtools-definition.
 oidcClientSecretSsmParameter: ""
 
