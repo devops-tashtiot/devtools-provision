@@ -1,0 +1,46 @@
+example-fast-api:
+  releasename: devops-api
+
+  replicaCount: 1
+
+  # Upstream chart (Platform-Infra-Org/FastAPI-Chart) has a template bug in
+  # deployment.yaml: it does `{{- with .Values.resources }}` and then
+  # references `.Values.resources` again inside that scope, where `.Values`
+  # no longer resolves — setting this to a real map crashes `helm template`
+  # with a nil pointer error. Leaving it as the chart's own default (an empty
+  # list, which the `with` treats as falsy and skips) until upstream is fixed.
+  resources: []
+
+  # No prometheus-operator (ServiceMonitor CRD) or grafana sidecar deployed
+  # on this platform yet (see clusters-provision/clusters/*) — both disabled
+  # to avoid an ArgoCD sync failure (missing CRD) / inert dashboard configmaps.
+  servicemonitor:
+    enabled: false
+
+  grafana:
+    enabled: false
+
+  # No ClusterSecretStore named "vault-cluster-secret-store" exists on this
+  # platform (only "aws-parameter-store", via external-secrets-operator) and
+  # this app needs no secrets beyond its image — leave disabled.
+  vault:
+    enabled: false
+
+  # image, env set per environment in devtools-definition.
+  image:
+    repository: ""
+    tag: ""
+    pullPolicy: IfNotPresent
+
+  # Explicit nulls, not `env: {}` — Helm merges maps key-by-key, so an empty
+  # map wouldn't clear the chart's own placeholder VAR_ONE/TWO/THREE defaults.
+  env:
+    VAR_ONE: null
+    VAR_TWO: null
+    VAR_THREE: null
+
+  # Chart ships a broken example mount by default (references a "my-config"
+  # ConfigMap that doesn't exist) — must stay empty unless a real configmap
+  # is added.
+  extraConfigmapMounts: []
+  extraSecretMounts: []

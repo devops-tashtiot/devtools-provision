@@ -1,0 +1,18 @@
+{{- $releasename :=  include "api.name" . }}
+{{- $grafanalabel :=  .Values.grafana.labelForReloader }}
+{{ $currentScope := .}}
+{{- if .Values.grafana.enabled -}}
+{{- range $file, $array := .Files.Glob "dashboards/*.json" }}
+{{- $filename := $file | base | replace ".json" "" }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $releasename }}-{{$filename}}
+  labels:
+    {{ $grafanalabel }}: "1"
+data: 
+  {{ $filename }}.json: |
+{{ $currentScope.Files.Get $file | indent 4 }}
+---
+{{- end }}
+{{- end -}}

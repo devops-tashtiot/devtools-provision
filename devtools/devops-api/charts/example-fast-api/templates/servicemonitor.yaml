@@ -1,0 +1,22 @@
+{{- if .Values.servicemonitor.enabled -}}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels: 
+    {{- include "api.labels" . | nindent 4 }}  # This should match the label selector of your Service
+    release: {{ .Values.servicemonitor.release }}
+  name: {{ include "api.name" . }}
+  namespace: {{include "api.namespaceName" .}}
+spec:
+  selector:
+    matchLabels:
+      {{- include "api.labels" . | nindent 6 }}
+  endpoints:
+    - port: http  # The port that exposes your /metrics endpoint (adjust if needed)
+      path: /metrics
+      interval: 30s  # Scrape every 30 seconds (adjust as needed)
+  namespaceSelector:
+    matchNames:
+      - {{include "api.namespaceName" .}}  # Replace with your namespace if necessary
+
+{{- end -}}

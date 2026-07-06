@@ -1,0 +1,10 @@
+apiVersion: v2
+name: devops-api
+description: devops-api (FastAPI-based DNS API) umbrella chart for devtools
+type: application
+version: 1.0.0
+appVersion: "7.0"
+dependencies:
+  - name: example-fast-api
+    version: 1.0.0
+    repository: "file://./charts/example-fast-api"
