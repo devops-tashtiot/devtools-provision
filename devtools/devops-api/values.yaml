@@ -30,13 +30,13 @@ example-fast-api:
     annotations:
       nginx.ingress.kubernetes.io/ssl-redirect: "false"
 
-  # devops-api authenticates to Bitbucket/Confluence/Jira/SonarQube/Git as
-  # the same AD/LDAP bind account everywhere, so every *_USERNAME/*_PASSWORD
+  # devops-api authenticates to Bitbucket/Confluence/Jira/SonarQube/Artifactory/Git
+  # as the same AD/LDAP bind account everywhere, so every *_USERNAME/*_PASSWORD
   # field is sourced once from the shared SSM params below via
   # external-secrets-operator's "aws-parameter-store" ClusterSecretStore —
-  # never hardcoded here. GIT_TOKEN and ARTIFACTORY_API_TOKEN are bearer
-  # tokens, not username/password pairs, so they're left blank in the env
-  # block below and set per environment in devtools-definition instead.
+  # never hardcoded here. GIT_TOKEN is a bearer token, not a username/password
+  # pair, so it's left blank in the env block below and set per environment
+  # in devtools-definition instead.
   vault:
     enabled: true
     clusterSecretStore: aws-parameter-store
@@ -65,6 +65,12 @@ example-fast-api:
       - secretKey: SONARQUBE_PASSWORD
         remoteRef:
           key: /devtools/domain-controller/ldap-bind-password
+      - secretKey: ARTIFACTORY_USERNAME
+        remoteRef:
+          key: /devtools/domain-controller/ldap-bind-username
+      - secretKey: ARTIFACTORY_PASSWORD
+        remoteRef:
+          key: /devtools/domain-controller/ldap-bind-password
       - secretKey: GIT_USERNAME
         remoteRef:
           key: /devtools/domain-controller/ldap-bind-username
@@ -89,7 +95,6 @@ example-fast-api:
     VAR_THREE: null
 
     ARTIFACTORY_API_URL: ""
-    ARTIFACTORY_API_TOKEN: ""
     ARTIFACTORY_LDAP_SETTING_NAME: ""
     ARTIFACTORY_S3_XRAY_UPDATES_BASE_URL: ""
 
