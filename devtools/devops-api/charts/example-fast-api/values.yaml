@@ -14,6 +14,23 @@ resources: []
   #   cpu: "250m"
   #   memory: "128Mi"
 
+# No probes by default. Set either (or both) in devtools-definition to enable —
+# any valid Kubernetes probe fields (httpGet/exec/tcpSocket, thresholds, etc.)
+# are passed through as-is.
+readinessProbe: {}
+  # httpGet:
+  #   path: /healthcheck
+  #   port: 5000
+  # initialDelaySeconds: 10
+  # periodSeconds: 60
+
+livenessProbe: {}
+  # httpGet:
+  #   path: /healthcheck
+  #   port: 5000
+  # initialDelaySeconds: 10
+  # periodSeconds: 60
+
 # Upstream chart (Platform-Infra-Org/FastAPI-Chart) ships no ingress template at
 # all — this block and templates/ingress.yaml were added locally to match the
 # nginx/cloudflared pattern every other devtool in this repo uses.
