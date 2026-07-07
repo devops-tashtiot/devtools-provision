@@ -94,11 +94,14 @@ xray:
   xray:
     jfrogUrl: ""
 
-# Secret placeholders — all overridden in devtools-definition
+# Secret placeholders — all overridden in devtools-definition.
+# username/password are NOT set here — the xray-db Secret's username/password
+# keys are sourced directly from the rdsAdmin SSM params below (see
+# templates/secrets.yaml's xray-db-credentials ExternalSecret). Xray connects
+# to Postgres as the shared RDS admin user, same as every other devtool on
+# this platform — only url is a plain value here.
 xraySecrets:
   db:
-    username: ""
-    password: ""
     url: ""
 
 # RDS master credentials (SSM SecureString paths) — used only by the
