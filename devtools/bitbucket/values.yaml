@@ -79,26 +79,30 @@ bitbucket:
     clustering:
       enabled: false
 
-# Secret placeholders — all overridden in devtools-definition
-bitbucketSecrets:
-  license: ""
-  # SSM Parameter Store path for the license (SecureString). Used instead of
-  # `license` above when set, via an ExternalSecret — keeps the license out
-  # of git. Requires the external-secrets-operator devtool to be deployed.
-  licenseSsmParameter: ""
-  admin:
-    username: ""
-    displayName: "Bitbucket Admin"
-    emailAddress: "admin@example.com"
-  # SSM Parameter Store path (SecureString) holding the shared admin password
-  # (plaintext). Patched into the bitbucket-sysadmin Secret via an
-  # ExternalSecret. Requires the external-secrets-operator devtool.
-  adminPasswordSsmParameter: ""
+# Values consumed only by this umbrella chart's own templates/ (not passed to
+# the bitbucket subchart) — kept under "wrapper" so they never collide with
+# the bitbucket subchart's own top-level key above.
+wrapper:
+  # Secret placeholders — all overridden in devtools-definition
+  bitbucketSecrets:
+    license: ""
+    # SSM Parameter Store path for the license (SecureString). Used instead of
+    # `license` above when set, via an ExternalSecret — keeps the license out
+    # of git. Requires the external-secrets-operator devtool to be deployed.
+    licenseSsmParameter: ""
+    admin:
+      username: ""
+      displayName: "Bitbucket Admin"
+      emailAddress: "admin@example.com"
+    # SSM Parameter Store path (SecureString) holding the shared admin password
+    # (plaintext). Patched into the bitbucket-sysadmin Secret via an
+    # ExternalSecret. Requires the external-secrets-operator devtool.
+    adminPasswordSsmParameter: ""
 
-# RDS master credentials (SSM SecureString paths) — used only by the
-# additionalInitContainer (see devtools-definition) that ensures this tool's
-# database/role exist on the shared RDS instance. Requires the
-# external-secrets-operator devtool. Set in devtools-definition.
-rdsAdmin:
-  usernameSsmParameter: ""
-  passwordSsmParameter: ""
+  # RDS master credentials (SSM SecureString paths) — used only by the
+  # additionalInitContainer (see devtools-definition) that ensures this tool's
+  # database/role exist on the shared RDS instance. Requires the
+  # external-secrets-operator devtool. Set in devtools-definition.
+  rdsAdmin:
+    usernameSsmParameter: ""
+    passwordSsmParameter: ""

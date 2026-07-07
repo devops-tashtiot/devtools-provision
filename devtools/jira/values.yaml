@@ -84,10 +84,14 @@ jira:
 # admin password at /devtools/admin/password; read them directly with
 # `aws ssm get-parameter --with-decryption` for the one-time manual setup
 # wizard instead.
-# RDS master credentials (SSM SecureString paths) — used only by the
-# additionalInitContainer (see devtools-definition) that ensures this tool's
-# database/role exist on the shared RDS instance. Requires the
-# external-secrets-operator devtool. Set in devtools-definition.
-rdsAdmin:
-  usernameSsmParameter: ""
-  passwordSsmParameter: ""
+# Values consumed only by this umbrella chart's own templates/ (not passed to
+# the jira subchart) — kept under "wrapper" so they never collide with the
+# jira subchart's own top-level key above.
+wrapper:
+  # RDS master credentials (SSM SecureString paths) — used only by the
+  # additionalInitContainer (see devtools-definition) that ensures this tool's
+  # database/role exist on the shared RDS instance. Requires the
+  # external-secrets-operator devtool. Set in devtools-definition.
+  rdsAdmin:
+    usernameSsmParameter: ""
+    passwordSsmParameter: ""

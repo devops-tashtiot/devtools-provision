@@ -85,32 +85,36 @@ artifactory:
     # features only; Xray cannot activate against it).
     license: {}
 
-# Secret placeholders — all overridden in devtools-definition
-artifactorySecrets:
-  license: ""
-  # SSM Parameter Store path for the license (SecureString). Used instead of
-  # `license` above when set, via an ExternalSecret — keeps the license out
-  # of git. Requires the external-secrets-operator devtool to be deployed.
-  licenseSsmParameter: ""
-  admin:
-    username: "admin"
-  # SSM Parameter Store path (SecureString) holding the shared admin password
-  # (plaintext). Patched into the artifactory-admin Secret via an
-  # ExternalSecret. Requires the external-secrets-operator devtool.
-  adminPasswordSsmParameter: ""
-  # username/password are NOT set here — the artifactory-db Secret's
-  # username/password keys are sourced directly from the rdsAdmin SSM params
-  # below (see templates/secrets.yaml's artifactory-db-credentials
-  # ExternalSecret). Artifactory connects to Postgres as the shared RDS admin
-  # user, same as every other devtool on this platform — only url is a plain
-  # value here.
-  db:
-    url: ""
+# Values consumed only by this umbrella chart's own templates/ (not passed to
+# the artifactory subchart) — kept under "wrapper" so they never collide with
+# the artifactory subchart's own top-level key above.
+wrapper:
+  # Secret placeholders — all overridden in devtools-definition
+  artifactorySecrets:
+    license: ""
+    # SSM Parameter Store path for the license (SecureString). Used instead of
+    # `license` above when set, via an ExternalSecret — keeps the license out
+    # of git. Requires the external-secrets-operator devtool to be deployed.
+    licenseSsmParameter: ""
+    admin:
+      username: "admin"
+    # SSM Parameter Store path (SecureString) holding the shared admin password
+    # (plaintext). Patched into the artifactory-admin Secret via an
+    # ExternalSecret. Requires the external-secrets-operator devtool.
+    adminPasswordSsmParameter: ""
+    # username/password are NOT set here — the artifactory-db Secret's
+    # username/password keys are sourced directly from the rdsAdmin SSM params
+    # below (see templates/secrets.yaml's artifactory-db-credentials
+    # ExternalSecret). Artifactory connects to Postgres as the shared RDS admin
+    # user, same as every other devtool on this platform — only url is a plain
+    # value here.
+    db:
+      url: ""
 
-# RDS master credentials (SSM SecureString paths) — used only by the
-# customInitContainersBegin hook (see devtools-definition) that ensures this
-# tool's database/role exist on the shared RDS instance. Requires the
-# external-secrets-operator devtool. Set in devtools-definition.
-rdsAdmin:
-  usernameSsmParameter: ""
-  passwordSsmParameter: ""
+  # RDS master credentials (SSM SecureString paths) — used only by the
+  # customInitContainersBegin hook (see devtools-definition) that ensures this
+  # tool's database/role exist on the shared RDS instance. Requires the
+  # external-secrets-operator devtool. Set in devtools-definition.
+  rdsAdmin:
+    usernameSsmParameter: ""
+    passwordSsmParameter: ""

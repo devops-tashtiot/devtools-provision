@@ -95,18 +95,22 @@ confluence:
         cpu: 1
         memory: 1.5Gi
 
-# Secret placeholders — all overridden in devtools-definition
-confluenceSecrets:
-  license: ""
-  # SSM Parameter Store path for the license (SecureString). Used instead of
-  # `license` above when set, via an ExternalSecret — keeps the license out
-  # of git. Requires the external-secrets-operator devtool to be deployed.
-  licenseSsmParameter: ""
+# Values consumed only by this umbrella chart's own templates/ (not passed to
+# the confluence subchart) — kept under "wrapper" so they never collide with
+# the confluence subchart's own top-level key above.
+wrapper:
+  # Secret placeholders — all overridden in devtools-definition
+  confluenceSecrets:
+    license: ""
+    # SSM Parameter Store path for the license (SecureString). Used instead of
+    # `license` above when set, via an ExternalSecret — keeps the license out
+    # of git. Requires the external-secrets-operator devtool to be deployed.
+    licenseSsmParameter: ""
 
-# RDS master credentials (SSM SecureString paths) — used only by the
-# additionalInitContainer (see devtools-definition) that ensures this tool's
-# database/role exist on the shared RDS instance. Requires the
-# external-secrets-operator devtool. Set in devtools-definition.
-rdsAdmin:
-  usernameSsmParameter: ""
-  passwordSsmParameter: ""
+  # RDS master credentials (SSM SecureString paths) — used only by the
+  # additionalInitContainer (see devtools-definition) that ensures this tool's
+  # database/role exist on the shared RDS instance. Requires the
+  # external-secrets-operator devtool. Set in devtools-definition.
+  rdsAdmin:
+    usernameSsmParameter: ""
+    passwordSsmParameter: ""

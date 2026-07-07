@@ -14,7 +14,7 @@
 # `post-install,post-upgrade` + `before-hook-creation` re-runs this on every
 # sync, after the SonarQube pod is up — safe to re-run, both API calls are
 # idempotent (create-if-missing / add-if-not-already-granted).
-{{- if .Values.adminGroup.name }}
+{{- if .Values.wrapper.adminGroup.name }}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -38,7 +38,7 @@ spec:
                   name: sonarqube-admin-password
                   key: password
             - name: GROUP_NAME
-              value: {{ .Values.adminGroup.name | quote }}
+              value: {{ .Values.wrapper.adminGroup.name | quote }}
           command:
             - /bin/sh
             - -c

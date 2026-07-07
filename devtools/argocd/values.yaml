@@ -86,27 +86,31 @@ argo-cd:
   notifications:
     enabled: false
 
-# Ingress for argocd-server, routed through the ingress-nginx + cloudflared
-# devtools. Disabled by default: on EKS, ingress is still terraform-managed
-# (argocd-ingress module) to avoid a duplicate Ingress object owned by two
-# controllers. Enable only for environments (e.g. minikube) where ingress is
-# fully GitOps-managed — see devtools-definition/devtools/argocd/values.yaml.
-ingress:
-  enabled: false
-  host: ""
+# Values consumed only by this umbrella chart's own templates/ (not passed to
+# the argo-cd subchart) — kept under "wrapper" so they never collide with the
+# argo-cd subchart's own top-level keys above.
+wrapper:
+  # Ingress for argocd-server, routed through the ingress-nginx + cloudflared
+  # devtools. Disabled by default: on EKS, ingress is still terraform-managed
+  # (argocd-ingress module) to avoid a duplicate Ingress object owned by two
+  # controllers. Enable only for environments (e.g. minikube) where ingress is
+  # fully GitOps-managed — see devtools-definition/devtools/argocd/values.yaml.
+  ingress:
+    enabled: false
+    host: ""
 
-# SSM Parameter Store path (SecureString) holding the shared admin password
-# (plaintext) — bcrypt-hashed on the fly by templates/argocd-admin-secret.yaml
-# via an ExternalSecret. Requires the external-secrets-operator devtool. Set
-# in devtools-definition.
-adminPasswordSsmParameter: ""
+  # SSM Parameter Store path (SecureString) holding the shared admin password
+  # (plaintext) — bcrypt-hashed on the fly by templates/argocd-admin-secret.yaml
+  # via an ExternalSecret. Requires the external-secrets-operator devtool. Set
+  # in devtools-definition.
+  adminPasswordSsmParameter: ""
 
-# SSM Parameter Store path (SecureString) holding the RHBK-issued OIDC
-# client secret for this ArgoCD instance — synced into argocd-secret's
-# oidc.keycloak.clientSecret key by templates/oidc-secret.yaml via an
-# ExternalSecret. Requires both external-secrets-operator and rhbk (cluster
-# infra) devtools; the OIDC config itself (issuer/clientID, referencing this
-# secret via $argocd-secret:oidc.keycloak.clientSecret) lives in
-# devtools-definition since it's environment-specific. Set in
-# devtools-definition.
-oidcClientSecretSsmParameter: ""
+  # SSM Parameter Store path (SecureString) holding the RHBK-issued OIDC
+  # client secret for this ArgoCD instance — synced into argocd-secret's
+  # oidc.keycloak.clientSecret key by templates/oidc-secret.yaml via an
+  # ExternalSecret. Requires both external-secrets-operator and rhbk (cluster
+  # infra) devtools; the OIDC config itself (issuer/clientID, referencing this
+  # secret via $argocd-secret:oidc.keycloak.clientSecret) lives in
+  # devtools-definition since it's environment-specific. Set in
+  # devtools-definition.
+  oidcClientSecretSsmParameter: ""

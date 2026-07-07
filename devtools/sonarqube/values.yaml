@@ -71,29 +71,33 @@ sonarqube:
   setAdminPassword:
     passwordSecretName: sonarqube-admin-password
 
-# SSM Parameter Store path (SecureString) holding the shared admin password
-# (plaintext) — patched into the sonarqube-admin-password Secret's "password"
-# key via an ExternalSecret. Requires the external-secrets-operator devtool.
-# Set in devtools-definition.
-adminPasswordSsmParameter: ""
+# Values consumed only by this umbrella chart's own templates/ (not passed to
+# the sonarqube subchart) — kept under "wrapper" so they never collide with
+# the sonarqube subchart's own top-level key above.
+wrapper:
+  # SSM Parameter Store path (SecureString) holding the shared admin password
+  # (plaintext) — patched into the sonarqube-admin-password Secret's "password"
+  # key via an ExternalSecret. Requires the external-secrets-operator devtool.
+  # Set in devtools-definition.
+  adminPasswordSsmParameter: ""
 
-# RDS master credentials (SSM SecureString paths) — used only by the
-# extraInitContainers entry (see devtools-definition) that ensures this
-# tool's database exists on the shared RDS instance. Requires the
-# external-secrets-operator devtool. Set in devtools-definition.
-rdsAdmin:
-  usernameSsmParameter: ""
-  passwordSsmParameter: ""
+  # RDS master credentials (SSM SecureString paths) — used only by the
+  # extraInitContainers entry (see devtools-definition) that ensures this
+  # tool's database exists on the shared RDS instance. Requires the
+  # external-secrets-operator devtool. Set in devtools-definition.
+  rdsAdmin:
+    usernameSsmParameter: ""
+    passwordSsmParameter: ""
 
-# RHBK-issued OIDC client secret for SonarQube (sonar-auth-oidc plugin) — see
-# templates/oidc-secret.yaml. Same shared SSM parameter
-# clusters-provision/clusters/rhbk's set-client-secrets-job.yaml reads to set
-# the actual secret on the RHBK side via the Admin API. Set in
-# devtools-definition.
-oidcClientSecretSsmParameter: ""
+  # RHBK-issued OIDC client secret for SonarQube (sonar-auth-oidc plugin) — see
+  # templates/oidc-secret.yaml. Same shared SSM parameter
+  # clusters-provision/clusters/rhbk's set-client-secrets-job.yaml reads to set
+  # the actual secret on the RHBK side via the Admin API. Set in
+  # devtools-definition.
+  oidcClientSecretSsmParameter: ""
 
-# AD group (synced from RHBK's LDAP group-ldap-mapper) to grant SonarQube
-# admin to via sonar-auth-oidc's groupsSync — see
-# templates/provision-admin-group-job.yaml. Set in devtools-definition.
-adminGroup:
-  name: ""
+  # AD group (synced from RHBK's LDAP group-ldap-mapper) to grant SonarQube
+  # admin to via sonar-auth-oidc's groupsSync — see
+  # templates/provision-admin-group-job.yaml. Set in devtools-definition.
+  adminGroup:
+    name: ""
