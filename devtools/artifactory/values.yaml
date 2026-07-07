@@ -98,9 +98,13 @@ artifactorySecrets:
   # (plaintext). Patched into the artifactory-admin Secret via an
   # ExternalSecret. Requires the external-secrets-operator devtool.
   adminPasswordSsmParameter: ""
+  # username/password are NOT set here — the artifactory-db Secret's
+  # username/password keys are sourced directly from the rdsAdmin SSM params
+  # below (see templates/secrets.yaml's artifactory-db-credentials
+  # ExternalSecret). Artifactory connects to Postgres as the shared RDS admin
+  # user, same as every other devtool on this platform — only url is a plain
+  # value here.
   db:
-    username: ""
-    password: ""
     url: ""
 
 # RDS master credentials (SSM SecureString paths) — used only by the
