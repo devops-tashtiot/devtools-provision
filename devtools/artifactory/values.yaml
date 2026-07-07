@@ -52,9 +52,23 @@ artifactory:
     replicaCount: 1
 
     persistence:
+      # Binary blob storage backend — "file-system" keeps blobs on the local
+      # PVC below; set to "s3-storage-v3-direct" in devtools-definition to
+      # store blobs in S3 instead (etc/work/logs still live on this PVC
+      # either way — persistence.type only controls blob storage).
       type: file-system
       size: 20Gi
       storageClassName: gp2
+      # For persistence.type: s3-storage-v3-direct (or aws-s3-v3/cluster-s3-storage-v3).
+      # useInstanceCredentials: true means no static AWS keys anywhere — the
+      # pod picks up the minikube EC2 instance's IAM role via IMDS, same
+      # convention as devops-api. bucketName/region are set in
+      # devtools-definition once the bucket exists.
+      awsS3V3:
+        useInstanceCredentials: true
+        bucketName: ""
+        region: ""
+        path: "artifactory/filestore"
 
     resources:
       requests:
