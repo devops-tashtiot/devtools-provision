@@ -101,3 +101,14 @@ wrapper:
   # templates/provision-admin-group-job.yaml. Set in devtools-definition.
   adminGroup:
     name: ""
+
+  # Renders every dashboards/*.json file (see templates/dashboards.yaml) as a
+  # Grafana-sidecar-discoverable ConfigMap — same mechanism as
+  # devtools-provision/devtools/argocd. No dashboards/*.json committed yet:
+  # SonarQube Community Edition has no native Prometheus metrics support
+  # (that's gated behind Developer/Enterprise edition or a third-party
+  # exporter, neither present here). Also requires kube-prometheus-stack to
+  # be deployed (see devtools-provision/devtools/argocd/values.yaml's
+  # grafanaDashboard note).
+  grafanaDashboard:
+    enabled: false

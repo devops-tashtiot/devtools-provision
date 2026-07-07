@@ -1,0 +1,21 @@
+{{- if .Values.wrapper.grafanaDashboard.enabled }}
+{{- range $file, $_ := .Files.Glob "dashboards/*.json" }}
+{{- $name := $file | base | trimSuffix ".json" }}
+---
+# Picked up by kube-prometheus-stack's Grafana sidecar (sidecar.dashboards,
+# watching for this label) once that cluster-infra tool is deployed with
+# searchNamespace: ALL (its Grafana pod lives in its own namespace, this
+# ConfigMap lives in {{ $.Release.Namespace }}) — see
+# clusters-provision/clusters/kube-prometheus-stack.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $name }}-dashboard
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    grafana_dashboard: "1"
+data:
+  {{ $name }}.json: |
+{{ $.Files.Get $file | indent 4 }}
+{{- end }}
+{{- end }}

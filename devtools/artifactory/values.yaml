@@ -132,3 +132,16 @@ wrapper:
   rdsAdmin:
     usernameSsmParameter: ""
     passwordSsmParameter: ""
+
+  # Renders every dashboards/*.json file (see templates/dashboards.yaml) as a
+  # Grafana-sidecar-discoverable ConfigMap — same mechanism as
+  # devtools-provision/devtools/argocd. No dashboards/*.json committed yet:
+  # Artifactory does expose a Prometheus-format metrics endpoint
+  # (system.yaml metrics.enabled), but that hasn't been verified against this
+  # specific unlicensed/OSS-mode deployment (some metrics may be gated behind
+  # a paid license) or wired into this chart's values — confirm the endpoint
+  # actually returns data here before adding a dashboard, or it'll just
+  # render empty. Also requires kube-prometheus-stack to be deployed (see
+  # devtools-provision/devtools/argocd/values.yaml's grafanaDashboard note).
+  grafanaDashboard:
+    enabled: false

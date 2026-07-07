@@ -114,3 +114,20 @@ wrapper:
   # devtools-definition since it's environment-specific. Set in
   # devtools-definition.
   oidcClientSecretSsmParameter: ""
+
+  # Renders every dashboards/*.json file (see templates/dashboards.yaml) as a
+  # Grafana-sidecar-discoverable ConfigMap. dashboards/argocd.json is the
+  # official community dashboard (grafana.com/dashboards/14584, sourced from
+  # https://github.com/argoproj/argo-cd/blob/master/examples/dashboard.json).
+  # Disabled by default: this platform doesn't run kube-prometheus-stack yet
+  # (see clusters-provision/clusters/kube-prometheus-stack), and even once it
+  # does, ArgoCD's own controller/server/repoServer metrics.enabled are still
+  # false (see charts/argo-cd/values.yaml) — enabling ServiceMonitor now would
+  # fail sync against a cluster that doesn't have the monitoring.coreos.com
+  # CRDs yet, the same class of failure devops-api's grafana.enabled avoids
+  # (see devtools-provision/devtools/devops-api/values.yaml). Flip this on,
+  # enable metrics+serviceMonitor on argo-cd's controller/server/repoServer,
+  # and set kube-prometheus-stack's grafana.sidecar.dashboards.searchNamespace
+  # to ALL, once that tool is actually deployed.
+  grafanaDashboard:
+    enabled: false
