@@ -117,16 +117,45 @@ a referral would ever need to point the client at anyway.
 
 ---
 
-## Also Fixing SSO Login (RHBK/Keycloak), Not Just the Directory
+## Authentication Methods
 
-The LDAP directory above only covers *authentication/user lookup*. If you're
-also wiring up OIDC login via RHBK, note that Jira's `redirectUri` in
-`clusters-definition/clusters/rhbk/values.yaml`'s `jiraClient` currently
-assumes the `/plugins/servlet/oauth/callback` path (the Atlassian Marketplace
-SSO app's fixed path). If Jira is using the newer first-party "Single
-sign-on" admin screen instead, check what callback path it actually shows —
-Bitbucket 10.2.2 turned out to use `/plugins/servlet/oidc/callback` instead,
-which required updating the RHBK client (see
-`clusters-provision/clusters/rhbk/templates/provision-oidc-clients-job.yaml`
-and the corresponding `clusters-definition` override). If Jira hits the same
-`Invalid parameter: redirect_uri` error from Keycloak, it's the same fix.
+The LDAP directory above enables one login path; RHBK/Keycloak SSO is a
+second, independent one. Both can be active at once, and both ultimately
+check the same AD credentials — they differ in *how* the user gets
+authenticated, not *against what*.
+
+**1. LDAP-backed username/password (Directory login)**
+
+This is what configuring the directory above enables by default — no extra
+setup. A user types their AD `sAMAccountName` and password into Jira's normal
+login form; Jira binds to the directory as that user to verify the password.
+Project/group permissions are also driven by this directory's group sync
+(the Membership schema configured above), independent of any SSO login.
+
+**2. SSO via RHBK (OIDC)**
+
+A "Log in with RHBK" button, provided by the **SSO for Atlassian Data
+Center** plugin (already installed on this instance — confirmed present
+under Administration → System info → Plugins), configured against the
+`jira` OIDC client in `clusters-definition/clusters/rhbk/values.yaml`. This
+redirects to RHBK/Keycloak's `devtools` realm, which itself authenticates
+against the *same* AD (via its own LDAP federation, `clusters-provision/
+clusters/rhbk/templates/realm-import.yaml`) — so SSO doesn't introduce a
+separate identity, just a Keycloak-brokered login flow in front of it.
+
+> **Important distinction:** SSO here only proves *identity* (who the user
+> is). It does **not** carry authorization — `jiraClient` deliberately has no
+> `groups` optionalClientScope (unlike `argocdClient`/`sonarqubeClient`), so
+> Jira's project permissions and roles still come entirely from this LDAP
+> directory's own group sync, not from anything in the OIDC token.
+
+**Known caveat:** Jira's `redirectUri` in `clusters-definition/clusters/rhbk/
+values.yaml`'s `jiraClient` currently assumes the `/plugins/servlet/
+oauth/callback` path (the Atlassian Marketplace SSO app's fixed path). If
+Jira's actual "Single sign-on" admin screen shows a different path instead,
+check it before enabling SSO — Bitbucket 10.2.2 turned out to use
+`/plugins/servlet/oidc/callback` instead, which required updating the RHBK
+client (see `clusters-provision/clusters/rhbk/templates/
+provision-oidc-clients-job.yaml` and the corresponding `clusters-definition`
+override). If Jira hits `Invalid parameter: redirect_uri` from Keycloak,
+it's the same fix.

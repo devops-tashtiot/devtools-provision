@@ -120,12 +120,44 @@ a referral would ever need to point the client at anyway.
 
 ---
 
-## SSO Login (RHBK/Keycloak) Is Separate From This Directory
+## Authentication Methods
 
-The LDAP directory above only covers *authentication/user lookup*. SSO login
-via RHBK is a separate integration (`clusters-definition/clusters/rhbk/values.yaml`'s
-`bitbucketClient`) — already fixed to use the correct
-`/plugins/servlet/oidc/callback` path for Bitbucket 10.2.2's built-in "Single
-sign-on" feature (Bitbucket's SSO screen uses a different callback path than
-the Atlassian Marketplace SSO app that Jira/Confluence's client config still
-assumes). No action needed here unless that client config regresses.
+The LDAP directory above enables one login path; RHBK/Keycloak SSO is a
+second, independent one. Both can be active at once, and both ultimately
+check the same AD credentials — they differ in *how* the user gets
+authenticated, not *against what*.
+
+**1. LDAP-backed username/password (Directory login)**
+
+This is what configuring the directory above enables by default — no extra
+setup. A user types their AD `sAMAccountName` and password into Bitbucket's
+normal login form; Bitbucket binds to the directory as that user to verify
+the password. Project/repo permissions are also driven by this directory's
+group sync (the Membership schema configured above), independent of any SSO
+login.
+
+**2. SSO via RHBK (OIDC)**
+
+A "Log in with RHBK" option, provided by Bitbucket 10.2.2's **built-in
+Single sign-on** admin screen (Administration → Security → Single sign-on —
+not the older Atlassian Marketplace SSO app), configured against the
+`bitbucket` OIDC client in `clusters-definition/clusters/rhbk/values.yaml`.
+This redirects to RHBK/Keycloak's `devtools` realm, which itself
+authenticates against the *same* AD (via its own LDAP federation,
+`clusters-provision/clusters/rhbk/templates/realm-import.yaml`) — so SSO
+doesn't introduce a separate identity, just a Keycloak-brokered login flow
+in front of it.
+
+> **Important distinction:** SSO here only proves *identity* (who the user
+> is). It does **not** carry authorization — `bitbucketClient` deliberately
+> has no `groups` optionalClientScope (unlike `argocdClient`/
+> `sonarqubeClient`), so Bitbucket's project/repo permissions still come
+> entirely from this LDAP directory's own group sync, not from anything in
+> the OIDC token.
+
+**Already fixed, note for context:** Bitbucket's `redirectUri` is set to
+`/plugins/servlet/oidc/callback` — Bitbucket's built-in SSO screen uses a
+different callback path than the Atlassian Marketplace SSO app that Jira's
+client config still assumes (see `docs/user-directories-jira.md`'s
+Authentication Methods section for that open caveat). No action needed here
+unless this client config regresses.
