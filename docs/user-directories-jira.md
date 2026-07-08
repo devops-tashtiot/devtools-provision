@@ -1,11 +1,12 @@
-# Configuring User Directories (LDAP/AD)
+# Configuring the User Directory (LDAP/AD) — Jira
 
-Jira, Confluence, and Bitbucket each authenticate against the same AD domain
-controller (`devtools-labs/terraform/modules/domain-controller`) instead of
-maintaining their own local user bases. Each app's embedded Crowd/user-directory
-screen is configured independently in its own admin UI (there's no shared
-config file or Helm value for this — it's a one-time manual setup per app),
-but they all point at the same AD and hit the same gotchas.
+Jira authenticates against the platform's AD domain controller
+(`devtools-labs/terraform/modules/domain-controller`) instead of maintaining
+its own local user base. There's no Helm value or automated setup for this —
+it's a one-time manual configuration in Jira's admin UI after initial deploy.
+
+**Where:** Administration (gear icon) → **User management** → **Configure a
+directory connector** (embedded-crowd's LDAP directory screen).
 
 ---
 
@@ -28,9 +29,12 @@ but they all point at the same AD and hit the same gotchas.
 
 ---
 
-## Schema Mapping
+## Advanced Settings — Schema Mapping
 
-These map Active Directory's actual attribute names onto Jira/Confluence/Bitbucket's generic directory-schema fields. They're standard AD attributes, not specific to this environment, but worth having in one place since the field names in Atlassian's UI don't always make the AD equivalent obvious.
+These map Active Directory's actual attribute names onto Jira's generic
+directory-schema fields. They're standard AD attributes, not specific to this
+environment, but worth having in one place since the field names in Jira's UI
+don't always make the AD equivalent obvious.
 
 **User schema:**
 
@@ -62,13 +66,21 @@ These map Active Directory's actual attribute names onto Jira/Confluence/Bitbuck
 | Group Members Attribute | `member` |
 | Use the User Membership Attribute | **"When finding the members of a group"** |
 
-The last one is a deliberate choice, not the Atlassian default: AD's group object carries a `member` attribute listing every member's DN directly, which is the more reliable direction to resolve membership from in a flat (non-nested) group structure. `clusters-provision/clusters/rhbk`'s Keycloak LDAP federation resolves AD group membership the same way (via the group's `member` attribute, `LOAD_GROUPS_BY_MEMBER_ATTRIBUTE`, not a per-user back-link) — this keeps both integrations consistent with each other.
+The last one is a deliberate choice, not Jira's default: AD's group object
+carries a `member` attribute listing every member's DN directly, which is the
+more reliable direction to resolve membership from in a flat (non-nested)
+group structure. `clusters-provision/clusters/rhbk`'s Keycloak LDAP
+federation resolves AD group membership the same way (via the group's
+`member` attribute, `LOAD_GROUPS_BY_MEMBER_ATTRIBUTE`, not a per-user
+back-link) — this keeps both integrations consistent with each other.
 
 ---
 
 ## Follow Referrals Must Be Disabled
 
-This is the one setting most likely to trip you up, because everything else can be configured correctly and the directory will still fail — specifically on **"Test retrieve user."**
+This is the one setting most likely to trip you up, because everything else
+can be configured correctly and the directory will still fail — specifically
+on **"Test retrieve user."**
 
 **Symptom:**
 
@@ -86,12 +98,11 @@ correct domain controller directly by IP. This is normal AD behavior around
 naming-context boundaries and paged searches, not a sign anything is
 misconfigured.
 
-If "Follow Referrals" is enabled, Jira's (or Confluence's/Bitbucket's)
-underlying LDAP client (Spring LDAP / JNDI) dutifully tries to open a *new*
-connection to that referral target — which is the AD domain's DNS name
-(`devtools.local`), not the IP address configured above. Since nothing in
-this platform resolves that domain name (see the callout above), the
-hostname lookup fails outright.
+If "Follow Referrals" is enabled, Jira's underlying LDAP client (Spring LDAP /
+JNDI) dutifully tries to open a *new* connection to that referral target —
+which is the AD domain's DNS name (`devtools.local`), not the IP address
+configured above. Since nothing in this platform resolves that domain name
+(see the callout above), the hostname lookup fails outright.
 
 **Fix:** uncheck **"Follow Referrals"** in the directory's Advanced Settings.
 There is no other side effect to turning it off here — the platform's AD
@@ -100,7 +111,22 @@ a referral would ever need to point the client at anyway.
 
 > **Why RHBK/Keycloak's LDAP federation never hit this:** Keycloak's LDAP
 > provider defaults to *ignoring* referrals rather than following them, so it
-> never attempts the DNS lookup that trips up Jira/Confluence/Bitbucket's
-> Spring-LDAP-based clients. If a future integration exposes a referral
-> setting, ignoring/not-following is the option to match this platform's
-> setup.
+> never attempts the DNS lookup that trips up Jira's Spring-LDAP-based
+> client. If a future integration exposes a referral setting, ignoring/
+> not-following is the option to match this platform's setup.
+
+---
+
+## Also Fixing SSO Login (RHBK/Keycloak), Not Just the Directory
+
+The LDAP directory above only covers *authentication/user lookup*. If you're
+also wiring up OIDC login via RHBK, note that Jira's `redirectUri` in
+`clusters-definition/clusters/rhbk/values.yaml`'s `jiraClient` currently
+assumes the `/plugins/servlet/oauth/callback` path (the Atlassian Marketplace
+SSO app's fixed path). If Jira is using the newer first-party "Single
+sign-on" admin screen instead, check what callback path it actually shows —
+Bitbucket 10.2.2 turned out to use `/plugins/servlet/oidc/callback` instead,
+which required updating the RHBK client (see
+`clusters-provision/clusters/rhbk/templates/provision-oidc-clients-job.yaml`
+and the corresponding `clusters-definition` override). If Jira hits the same
+`Invalid parameter: redirect_uri` error from Keycloak, it's the same fix.
