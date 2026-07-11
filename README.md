@@ -1,8 +1,9 @@
 # devtools-provision
 
 Umbrella Helm charts for the self-hosted devtools platform — Jira, Bitbucket, Confluence,
-Artifactory, ArgoCD, and Xray, all Data Center/self-hosted editions running on the
-`devtools-labs` cluster. This is the "what to deploy" half of a provision/definition pair;
+Artifactory, ArgoCD, and Xray, all self-hosted editions running on the `devtools-labs`
+cluster (Artifactory runs the OSS edition specifically — see its `values.yaml` — every
+other tool is Data Center). This is the "what to deploy" half of a provision/definition pair;
 environment-specific values (ingress hosts, credentials, EKS resource sizing) live in the
 sibling [`devtools-definition`](https://github.com/devops-tashtiot/devtools-definition)
 repo, and both are auto-discovered by an ArgoCD `ApplicationSet`. The cluster-infra
@@ -27,7 +28,8 @@ upstream chart under `charts/<subchart>/` (never a `.tgz`) via a `file://` depen
 
 ## Conventions
 
-- Self-hosted / Data Center edition only, version pinned to whatever's already validated in
+- Self-hosted / Data Center edition (Artifactory is the one exception — OSS edition, no
+  license), version pinned to whatever's already validated in
   `../tashtiot-apis/docker-compose.<tool>.yaml`.
 - Shared Postgres instance (`devtools-rds`) — each tool provisions its own database/role
   lazily via an init container, no separate RDS instance per tool.

@@ -51,6 +51,18 @@ artifactory:
   artifactory:
     replicaCount: 1
 
+    # OSS edition, not Pro/Enterprise+ — this platform has no JFrog license.
+    # The upstream chart defaults artifactory.image.repository to
+    # jfrog/artifactory-pro; overriding just the repository (tag still
+    # defaults to Chart.AppVersion, which the jfrog/artifactory-oss registry
+    # also publishes) switches the same chart to the free OSS binary instead
+    # of vendoring a separate chart. Note: Xray's Access Federation with this
+    # instance (see devtools-definition/devtools/artifactory/values.yaml)
+    # requires an Enterprise+ licensed Artifactory and will not work against
+    # OSS.
+    image:
+      repository: jfrog/artifactory-oss
+
     persistence:
       # Binary blob storage backend — "file-system" keeps blobs on the local
       # PVC below; set to "s3-storage-v3-direct" in devtools-definition to
@@ -91,12 +103,9 @@ artifactory:
       dataKey: password
     # License is deliberately left unset here: this chart mounts
     # artifactory.license.secret unconditionally once set, and Kubernetes
-    # will fail to schedule the pod if that Secret doesn't exist. Only set
-    # license.secret/dataKey (to "artifactory-license"/"artifactory.lic") in
-    # devtools-definition once a real license is added to
-    # artifactorySecrets.license / .licenseSsmParameter below — see the
-    # comment there. Until then Artifactory runs unlicensed (OSS-tier
-    # features only; Xray cannot activate against it).
+    # will fail to schedule the pod if that Secret doesn't exist. The OSS
+    # image (see image.repository above) doesn't accept a license at all —
+    # this stays empty permanently, not just until one is added.
     license: {}
 
 # Values consumed only by this umbrella chart's own templates/ (not passed to
