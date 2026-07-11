@@ -45,7 +45,8 @@ freehanding templates).
   Artifactory is the one exception: it runs the OSS edition (no JFrog license), via an
   `image.repository: jfrog/artifactory-oss` override on the same upstream chart — see
   `devtools/artifactory/values.yaml`. This breaks Xray's Access Federation with it (Xray
-  needs an Enterprise+ licensed Artifactory), accepted as a tradeoff.
+  needs an Enterprise+ licensed Artifactory), accepted as a tradeoff. See
+  `devtools/artifactory/CLAUDE.md` for the full checklist to revert this back to Pro.
 - **Database** — every tool that needs Postgres reuses the one shared `devtools-rds`
   instance; its own database is created lazily by an `additionalInitContainer`/
   `customInitContainersBegin` init container wired in `devtools-definition`, never a new RDS
