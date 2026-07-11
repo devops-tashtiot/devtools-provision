@@ -70,7 +70,7 @@ confluence:
   # (database, volumes, ingress) resolves fine unprefixed.
   confluence:
     license:
-      secretName: ""
+      secretName: confluence-license
       secretKey: license-key
 
     resources:
