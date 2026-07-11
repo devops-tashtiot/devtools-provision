@@ -49,19 +49,27 @@ artifactory:
       nginx.ingress.kubernetes.io/proxy-body-size: "0"
 
   # Chart bug on OSS images: artifactory-statefulset.yaml correctly skips
-  # creating the jfconnect/onemodel containers when artifactory.image.repository
-  # matches oss|cpp-ce|jcr (see templates/_helpers.tpl's isImageProType), but
-  # the router's requiredServiceTypes helper has no such check — it adds
-  # jfcon/jfomr to the router's required-services list whenever
-  # jfconnect.enabled/onemodel.enabled are true (the chart default), regardless
-  # of image. Left at the default, the router container waits forever for
-  # services that correctly never start, so it never passes its readiness
-  # probe and the pod (and the ingress behind it) never comes up — this is
-  # what caused a persistent 503 the first time this instance switched to OSS.
-  # Must disable both explicitly whenever image.repository is an OSS variant.
+  # creating the jfconnect/onemodel/evidence containers when
+  # artifactory.image.repository matches oss|cpp-ce|jcr (see
+  # templates/_helpers.tpl's isImageProType), but the router's
+  # requiredServiceTypes helper has no such check — it adds jfcon/jfomr/jfevd
+  # to the router's required-services list whenever
+  # jfconnect.enabled/onemodel.enabled/evidence.enabled are true (the chart
+  # default), regardless of image. Left at the default, the router container
+  # waits forever for services that correctly never start, so it never passes
+  # its readiness probe and the pod (and the ingress behind it) never comes
+  # up — this is what caused a persistent 503 the first time this instance
+  # switched to OSS. Must disable all three explicitly whenever
+  # image.repository is an OSS variant; if a future upstream chart bump adds
+  # more Pro-only services gated the same asymmetric way, expect the same
+  # symptom (router stuck NotReady on "required node services are missing")
+  # and check artifactory-statefulset.yaml's oss/cpp-ce/jcr regex guards
+  # against _helpers.tpl's requiredServiceTypes list for what's missing.
   jfconnect:
     enabled: false
   onemodel:
+    enabled: false
+  evidence:
     enabled: false
 
   artifactory:
