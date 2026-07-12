@@ -1,6 +1,6 @@
 apiVersion: v2
 name: artifactory
-description: Artifactory OSS 7.117.15
+description: Artifactory Data Center 7.117.15
 type: application
 version: 1.0.0
 appVersion: "7.117.15"

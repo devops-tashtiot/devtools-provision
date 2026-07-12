@@ -48,44 +48,8 @@ artifactory:
       nginx.ingress.kubernetes.io/ssl-redirect: "false"
       nginx.ingress.kubernetes.io/proxy-body-size: "0"
 
-  # Chart bug on OSS images: artifactory-statefulset.yaml correctly skips
-  # creating the jfconnect/onemodel/evidence containers when
-  # artifactory.image.repository matches oss|cpp-ce|jcr (see
-  # templates/_helpers.tpl's isImageProType), but the router's
-  # requiredServiceTypes helper has no such check — it adds jfcon/jfomr/jfevd
-  # to the router's required-services list whenever
-  # jfconnect.enabled/onemodel.enabled/evidence.enabled are true (the chart
-  # default), regardless of image. Left at the default, the router container
-  # waits forever for services that correctly never start, so it never passes
-  # its readiness probe and the pod (and the ingress behind it) never comes
-  # up — this is what caused a persistent 503 the first time this instance
-  # switched to OSS. Must disable all three explicitly whenever
-  # image.repository is an OSS variant; if a future upstream chart bump adds
-  # more Pro-only services gated the same asymmetric way, expect the same
-  # symptom (router stuck NotReady on "required node services are missing")
-  # and check artifactory-statefulset.yaml's oss/cpp-ce/jcr regex guards
-  # against _helpers.tpl's requiredServiceTypes list for what's missing.
-  jfconnect:
-    enabled: false
-  onemodel:
-    enabled: false
-  evidence:
-    enabled: false
-
   artifactory:
     replicaCount: 1
-
-    # OSS edition, not Pro/Enterprise+ — this platform has no JFrog license.
-    # The upstream chart defaults artifactory.image.repository to
-    # jfrog/artifactory-pro; overriding just the repository (tag still
-    # defaults to Chart.AppVersion, which the jfrog/artifactory-oss registry
-    # also publishes) switches the same chart to the free OSS binary instead
-    # of vendoring a separate chart. Note: Xray's Access Federation with this
-    # instance (see devtools-definition/devtools/artifactory/values.yaml)
-    # requires an Enterprise+ licensed Artifactory and will not work against
-    # OSS.
-    image:
-      repository: jfrog/artifactory-oss
 
     persistence:
       # Binary blob storage backend — "file-system" keeps blobs on the local
@@ -125,11 +89,9 @@ artifactory:
     admin:
       secret: artifactory-admin
       dataKey: password
-    # License is deliberately left unset here: this chart mounts
-    # artifactory.license.secret unconditionally once set, and Kubernetes
-    # will fail to schedule the pod if that Secret doesn't exist. The OSS
-    # image (see image.repository above) doesn't accept a license at all —
-    # this stays empty permanently, not just until one is added.
+    # License wiring (secret/dataKey) is set in devtools-definition once a
+    # real license is available — left unset here, same pattern as admin
+    # above.
     license: {}
 
 # Values consumed only by this umbrella chart's own templates/ (not passed to
@@ -171,8 +133,7 @@ wrapper:
   # devtools-provision/devtools/argocd. No dashboards/*.json committed yet:
   # Artifactory does expose a Prometheus-format metrics endpoint
   # (system.yaml metrics.enabled), but that hasn't been verified against this
-  # specific unlicensed/OSS-mode deployment (some metrics may be gated behind
-  # a paid license) or wired into this chart's values — confirm the endpoint
+  # deployment or wired into this chart's values — confirm the endpoint
   # actually returns data here before adding a dashboard, or it'll just
   # render empty. Also requires kube-prometheus-stack to be deployed (see
   # devtools-provision/devtools/argocd/values.yaml's grafanaDashboard note).
