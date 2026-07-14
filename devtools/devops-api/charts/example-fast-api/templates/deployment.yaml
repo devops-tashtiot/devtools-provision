@@ -15,7 +15,7 @@ spec:
       labels:
         {{- include "api.labels" . | nindent 8 }}
     spec:
-      {{- if not .Values.vault.enabled }}
+      {{- if or .Values.extraConfigmapMounts .Values.extraSecretMounts }}
       volumes:
       {{- range .Values.extraConfigmapMounts }}
       - name: {{ tpl .name $root }}
@@ -50,7 +50,7 @@ spec:
         ports:
         - containerPort: 5000
           name: http
-        {{- if not .Values.vault.enabled }}
+        {{- if or .Values.extraConfigmapMounts .Values.extraSecretMounts }}
         volumeMounts:
         {{- range .Values.extraConfigmapMounts }}
         - name: {{ tpl .name $root }}
