@@ -115,7 +115,6 @@ example-fast-api:
     GIT_TOKEN: ""
     GIT_PROJECT_KEY: ""
     GIT_SSH_KEY_PATH: ""
-    GIT_SSH_PORT: ""
 
     DOMAIN_SUFFIX: ""
 
