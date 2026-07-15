@@ -1,0 +1,22 @@
+# Cloudflare Origin CA root cert — trusted so Artifactory's own outbound TLS
+# calls to *.devopstashtiot.page pass real certificate verification. Needed
+# for the RHBK/Keycloak OIDC SSO login flow specifically: Artifactory's
+# server-side token/userinfo exchange with rhbk.devopstashtiot.page (after
+# the browser redirect completes) was failing with
+# "javax.net.ssl.SSLHandshakeException: PKIX path building failed" because
+# ingress-nginx-controller presents a real Cloudflare Origin Certificate
+# signed by Cloudflare's own private Origin CA, which isn't in any standard
+# JVM trust store. Same cert/reasoning as devops-api/Dockerfile — a public
+# root cert, not sensitive, so committed directly rather than sourced via
+# SSM/ExternalSecret. Wired in via the artifactory subchart's built-in
+# global.customCertificates mechanism (copies every non-".key" file in this
+# secret into $JFROG_HOME/artifactory/var/etc/security/keys/trusted).
+apiVersion: v1
+kind: Secret
+metadata:
+  name: artifactory-trusted-certs
+  namespace: {{ .Release.Namespace }}
+type: Opaque
+stringData:
+  cloudflare-origin-ca-rsa-root.crt: |
+{{ .Files.Get "files/cloudflare-origin-ca-rsa-root.pem" | indent 4 }}

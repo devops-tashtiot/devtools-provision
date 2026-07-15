@@ -8,6 +8,16 @@
 # the outer "artifactory:" key here down into the subchart unprefixed, so the
 # self-prefixed fields need an extra inner "artifactory:" level to land right.
 
+# "global" is a reserved Helm key shared automatically with the vendored
+# artifactory subchart (charts/artifactory) — this activates its built-in
+# copy-custom-certificates init container, sourcing from the
+# artifactory-trusted-certs Secret rendered by templates/trusted-certs.yaml.
+# See that file's header comment for why (RHBK SSO OIDC PKIX trust failure).
+global:
+  customCertificates:
+    enabled: true
+    certificateSecretName: artifactory-trusted-certs
+
 artifactory:
   # Disable the chart's bundled Postgres (Bitnami) and nginx sidecar — this
   # platform reuses the shared RDS instance (see devtools-definition) and
