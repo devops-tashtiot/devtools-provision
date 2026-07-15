@@ -115,18 +115,6 @@ wrapper:
   # devtools-definition.
   oidcClientSecretSsmParameter: ""
 
-  # SSM Parameter Store path (SecureString) holding the Cloudflare Origin CA
-  # cert (public cert only) — synced into the argocd-origin-ca Secret by
-  # templates/origin-ca-secret.yaml via an ExternalSecret, so argocd-server
-  # can trust rhbk's in-cluster TLS cert during OIDC discovery/token
-  # verification (browser login and any client_credentials service account
-  # alike — see that template's comment for the full "why"). Requires
-  # external-secrets-operator. The initContainer/volume wiring that actually
-  # merges this into the pod's trust store is environment-specific (whether
-  # this platform's in-cluster ingress presents Cloudflare Origin certs at
-  # all) — set alongside this in devtools-definition, not here.
-  originCaCrtSsmParameter: ""
-
   # Renders every dashboards/*.json file (see templates/dashboards.yaml) as a
   # Grafana-sidecar-discoverable ConfigMap. dashboards/argocd.json is the
   # official community dashboard (grafana.com/dashboards/14584, sourced from
