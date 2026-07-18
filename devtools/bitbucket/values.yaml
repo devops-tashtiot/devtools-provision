@@ -29,12 +29,12 @@ bitbucket:
     localHome:
       persistentVolumeClaim:
         create: true
-        storageClassName: gp2
+        storageClassName: gp3
         resources:
           requests:
             storage: 10Gi
     sharedHome:
-      storageClassName: gp2
+      storageClassName: gp3
       customVolume:
         persistentVolumeClaim:
           claimName: bitbucket-shared-home

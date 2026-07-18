@@ -7,7 +7,11 @@ metadata:
   {{- include "common.labels.commonLabels" . | nindent 4 }}
 spec:
   accessModes:
+    {{- if .Values.volumes.sharedHome.persistentVolumeClaim.accessModes }}
+    {{- toYaml .Values.volumes.sharedHome.persistentVolumeClaim.accessModes | nindent 4 }}
+    {{- else }}
     - ReadWriteMany
+    {{- end }}
   {{- if .Values.volumes.sharedHome.persistentVolumeClaim.storageClassName }}
   storageClassName: {{ .Values.volumes.sharedHome.persistentVolumeClaim.storageClassName | quote }}
   {{- end }}

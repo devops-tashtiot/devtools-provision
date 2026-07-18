@@ -40,7 +40,7 @@ confluence:
     localHome:
       persistentVolumeClaim:
         create: true
-        storageClassName: gp2
+        storageClassName: gp3
         resources:
           requests:
             storage: 10Gi
@@ -49,14 +49,14 @@ confluence:
         create: true
         accessModes:
           - ReadWriteOnce
-        storageClassName: gp2
+        storageClassName: gp3
         resources:
           requests:
             storage: 10Gi
     synchronyHome:
       persistentVolumeClaim:
         create: true
-        storageClassName: gp2
+        storageClassName: gp3
         resources:
           requests:
             storage: 2Gi

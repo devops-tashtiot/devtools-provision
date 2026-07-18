@@ -27,6 +27,18 @@ artifactory:
   nginx:
     enabled: false
 
+  # A genuine top-level field on this subchart (distinct from the
+  # self-prefixed artifactory.artifactory.* below) — chart default is
+  # create: false, meaning the pod runs under the namespace's "default"
+  # ServiceAccount. On minikube this doesn't matter (S3 access rides the
+  # node's own IMDS role regardless of which ServiceAccount a pod uses); on
+  # EKS this needs to be its own distinct ServiceAccount so a Pod Identity
+  # association (devtools-labs' eks module) can scope S3 access to just this
+  # pod. Harmless on minikube — an extra unused ServiceAccount object.
+  serviceAccount:
+    create: true
+    name: "artifactory"
+
   database:
     allowNonPostgresql: false
     type: postgresql
@@ -68,7 +80,7 @@ artifactory:
       # either way — persistence.type only controls blob storage).
       type: file-system
       size: 20Gi
-      storageClassName: gp2
+      storageClassName: gp3
       # For persistence.type: s3-storage-v3-direct (or aws-s3-v3/cluster-s3-storage-v3).
       # useInstanceCredentials: true means no static AWS keys anywhere — the
       # pod picks up the minikube EC2 instance's IAM role via IMDS, same
