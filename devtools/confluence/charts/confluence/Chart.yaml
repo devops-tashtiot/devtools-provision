@@ -29,4 +29,4 @@ sources:
 - https://github.com/atlassian/data-center-helm-charts
 - https://bitbucket.org/atlassian-docker/docker-atlassian-confluence-server/
 type: application
-version: 2.0.7
+version: 2.0.7b
