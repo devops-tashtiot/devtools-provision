@@ -1,0 +1,40 @@
+# Cloudflare Origin CA root cert — trusted so argocd-repo-server's own outbound
+# git-over-HTTPS clone of the GitOps repo (bitbucket.devopstashtiot.page/scm/argo/argocd.git,
+# used by devops-api's create_cluster_secret) passes real certificate verification. Without
+# this, repo-server rejects the clone with "x509: certificate signed by unknown authority" —
+# confirmed live 2026-07-21, same root cause as devtools-provision/devtools/bitbucket's,
+# jira's, confluence's, and artifactory's trusted-certs.yaml (ingress-nginx-controller
+# presents a real Cloudflare Origin Certificate signed by Cloudflare's own private Origin CA,
+# not in any standard trust store).
+#
+# Unlike those four (JVM apps with a generic "trust this cert file" mechanism), ArgoCD's
+# repo-server reads trusted certs from a ConfigMap (argocd-tls-certs-cm, one data key per git
+# hostname, mounted at /app/config/tls) — external-secrets.io's ExternalSecret can only target
+# a Secret by default, not a ConfigMap. Solved here via ExternalSecret v2.7's
+# spec.target.manifest field (creates an arbitrary resource kind instead of a Secret), so this
+# still sources the same public root cert from SSM rather than duplicating it in git — same
+# convention as the other four devtools' trusted-certs.yaml, just via a different ESO feature.
+#
+# configs.tls.create is set to false in devtools-definition/devtools/argocd/values.yaml so the
+# argo-cd subchart doesn't also try to create/own argocd-tls-certs-cm — this ExternalSecret is
+# its sole owner.
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: argocd-tls-certs-cm
+  namespace: {{ .Release.Namespace }}
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: aws-parameter-store
+    kind: ClusterSecretStore
+  target:
+    name: argocd-tls-certs-cm
+    creationPolicy: Owner
+    manifest:
+      apiVersion: v1
+      kind: ConfigMap
+  data:
+    - secretKey: bitbucket.devopstashtiot.page
+      remoteRef:
+        key: {{ .Values.wrapper.trustedCertsSsmParameter | quote }}

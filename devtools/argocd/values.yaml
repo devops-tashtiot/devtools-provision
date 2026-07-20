@@ -105,6 +105,15 @@ wrapper:
   # in devtools-definition.
   adminPasswordSsmParameter: ""
 
+  # SSM Parameter Store path (SecureString) holding the Cloudflare Origin CA
+  # root cert — synced into the argocd-tls-certs-cm ConfigMap by
+  # templates/trusted-certs.yaml via an ExternalSecret (using its
+  # spec.target.manifest field, since repo-server needs a ConfigMap, not a
+  # Secret). Same SSM value bitbucket/jira/confluence/artifactory's
+  # trusted-certs.yaml already use. Requires the external-secrets-operator
+  # devtool. Set in devtools-definition.
+  trustedCertsSsmParameter: ""
+
   # SSM Parameter Store path (SecureString) holding the RHBK-issued OIDC
   # client secret for this ArgoCD instance — synced into argocd-secret's
   # oidc.keycloak.clientSecret key by templates/oidc-secret.yaml via an
