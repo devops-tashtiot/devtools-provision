@@ -1,0 +1,23 @@
+# Cloudflare Origin CA root cert — trusted so Bitbucket's own outbound TLS
+# calls to *.devopstashtiot.page pass real certificate verification. Needed
+# for the RHBK/Keycloak OIDC SSO login flow specifically: Bitbucket's
+# server-side token exchange with rhbk.devopstashtiot.page (after the browser
+# redirect completes) was failing with
+# "javax.net.ssl.SSLHandshakeException: PKIX path building failed" because
+# ingress-nginx-controller presents a real Cloudflare Origin Certificate
+# signed by Cloudflare's own private Origin CA, which isn't in any standard
+# JVM trust store. Same cert/root cause as devtools-provision/devtools/
+# artifactory/templates/trusted-certs.yaml — a public root cert, not
+# sensitive, so committed directly rather than sourced via SSM/ExternalSecret.
+# Wired in via the bitbucket subchart's own bitbucket.additionalCertificates
+# mechanism (mounts every key in this secret into an init container that
+# keytool-imports each into the JVM's cacerts before Bitbucket starts).
+apiVersion: v1
+kind: Secret
+metadata:
+  name: bitbucket-trusted-certs
+  namespace: {{ .Release.Namespace }}
+type: Opaque
+stringData:
+  cloudflare-origin-ca-rsa-root.crt: |
+{{ .Files.Get "files/cloudflare-origin-ca-rsa-root.pem" | indent 4 }}

@@ -79,6 +79,14 @@ bitbucket:
     clustering:
       enabled: false
 
+    # Trusts the Cloudflare Origin CA root so Bitbucket's own outbound OIDC
+    # token-exchange call to rhbk.devopstashtiot.page passes TLS verification
+    # instead of failing with "PKIX path building failed" (same root cause and
+    # fix as devtools-provision/devtools/artifactory's additionalCertificates —
+    # see templates/trusted-certs.yaml for the full explanation).
+    additionalCertificates:
+      secretName: bitbucket-trusted-certs
+
 # Values consumed only by this umbrella chart's own templates/ (not passed to
 # the bitbucket subchart) — kept under "wrapper" so they never collide with
 # the bitbucket subchart's own top-level key above.
