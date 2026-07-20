@@ -97,7 +97,7 @@ wrapper:
   # fully GitOps-managed — see devtools-definition/devtools/argocd/values.yaml.
   ingress:
     enabled: false
-    host: ""
+    hosts: []
 
   # SSM Parameter Store path (SecureString) holding the shared admin password
   # (plaintext) — bcrypt-hashed on the fly by templates/argocd-admin-secret.yaml
