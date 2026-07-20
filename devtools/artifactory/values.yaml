@@ -138,6 +138,11 @@ wrapper:
     usernameSsmParameter: ""
     passwordSsmParameter: ""
 
+  # SSM Parameter Store path (SecureString) to Cloudflare's public Origin CA
+  # root cert — same platform-wide value for every devtool, published once by
+  # devtools-labs Terraform's devtools-secrets module. Set in devtools-definition.
+  trustedCertsSsmParameter: ""
+
   # Renders every dashboards/*.json file (see templates/dashboards.yaml) as a
   # Grafana-sidecar-discoverable ConfigMap — same mechanism as
   # devtools-provision/devtools/argocd. No dashboards/*.json committed yet:

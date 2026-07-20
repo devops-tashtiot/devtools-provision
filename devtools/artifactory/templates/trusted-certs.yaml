@@ -6,17 +6,28 @@
 # "javax.net.ssl.SSLHandshakeException: PKIX path building failed" because
 # ingress-nginx-controller presents a real Cloudflare Origin Certificate
 # signed by Cloudflare's own private Origin CA, which isn't in any standard
-# JVM trust store. Same cert/reasoning as devops-api/Dockerfile — a public
-# root cert, not sensitive, so committed directly rather than sourced via
-# SSM/ExternalSecret. Wired in via the artifactory subchart's built-in
-# global.customCertificates mechanism (copies every non-".key" file in this
-# secret into $JFROG_HOME/artifactory/var/etc/security/keys/trusted).
-apiVersion: v1
-kind: Secret
+# JVM trust store. Same cert/root cause as devtools-provision/devtools/
+# bitbucket's, jira's, and confluence's trusted-certs.yaml. Sourced from SSM
+# (published once by devtools-labs Terraform's devtools-secrets module)
+# rather than a PEM file committed here, so the same public root cert isn't
+# duplicated in git across every devtool. Wired in via the artifactory
+# subchart's built-in global.customCertificates mechanism (copies every
+# non-".key" file in this secret into
+# $JFROG_HOME/artifactory/var/etc/security/keys/trusted).
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
 metadata:
   name: artifactory-trusted-certs
   namespace: {{ .Release.Namespace }}
-type: Opaque
-stringData:
-  cloudflare-origin-ca-rsa-root.crt: |
-{{ .Files.Get "files/cloudflare-origin-ca-rsa-root.pem" | indent 4 }}
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: aws-parameter-store
+    kind: ClusterSecretStore
+  target:
+    name: artifactory-trusted-certs
+    creationPolicy: Owner
+  data:
+    - secretKey: cloudflare-origin-ca-rsa-root.crt
+      remoteRef:
+        key: {{ .Values.wrapper.trustedCertsSsmParameter | quote }}

@@ -5,18 +5,28 @@
 # browser redirect completes) fails with "javax.net.ssl.SSLHandshakeException:
 # PKIX path building failed" because ingress-nginx-controller presents a real
 # Cloudflare Origin Certificate signed by Cloudflare's own private Origin CA,
-# which isn't in any standard JVM trust store. Same cert/root cause and fix
-# as devtools-provision/devtools/bitbucket's and .../artifactory's
-# templates/trusted-certs.yaml. Wired in via the confluence subchart's own
-# confluence.additionalCertificates mechanism (mounts every key in this
-# secret into an init container that keytool-imports each into the JVM's
-# cacerts before Confluence starts).
-apiVersion: v1
-kind: Secret
+# which isn't in any standard JVM trust store. Same cert/root cause as
+# devtools-provision/devtools/bitbucket's, artifactory's, and jira's
+# trusted-certs.yaml. Sourced from SSM (published once by devtools-labs
+# Terraform's devtools-secrets module) rather than a PEM file committed here,
+# so the same public root cert isn't duplicated in git across every devtool.
+# Wired in via the confluence subchart's own confluence.additionalCertificates
+# mechanism (mounts every key in this secret into an init container that
+# keytool-imports each into the JVM's cacerts before Confluence starts).
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
 metadata:
   name: confluence-trusted-certs
   namespace: {{ .Release.Namespace }}
-type: Opaque
-stringData:
-  cloudflare-origin-ca-rsa-root.crt: |
-{{ .Files.Get "files/cloudflare-origin-ca-rsa-root.pem" | indent 4 }}
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: aws-parameter-store
+    kind: ClusterSecretStore
+  target:
+    name: confluence-trusted-certs
+    creationPolicy: Owner
+  data:
+    - secretKey: cloudflare-origin-ca-rsa-root.crt
+      remoteRef:
+        key: {{ .Values.wrapper.trustedCertsSsmParameter | quote }}
