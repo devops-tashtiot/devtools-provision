@@ -72,6 +72,15 @@ jira:
           cpu: 3
           memory: 2.5Gi
 
+    # Trusts the Cloudflare Origin CA root so Jira's own outbound OIDC
+    # token-exchange call to rhbk.devopstashtiot.page passes TLS verification
+    # instead of failing with "PKIX path building failed" (same root cause and
+    # fix as devtools-provision/devtools/bitbucket's/artifactory's
+    # additionalCertificates — see templates/trusted-certs.yaml for the full
+    # explanation).
+    additionalCertificates:
+      secretName: jira-trusted-certs
+
 # Secret placeholders — all overridden in devtools-definition.
 #
 # NOTE: unlike bitbucket, Jira's Docker image/Helm chart has no built-in

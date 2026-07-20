@@ -1,0 +1,22 @@
+# Cloudflare Origin CA root cert — trusted so Confluence's own outbound TLS
+# calls to *.devopstashtiot.page pass real certificate verification. Needed
+# for the RHBK/Keycloak OIDC SSO login flow specifically: Confluence's
+# server-side token exchange with rhbk.devopstashtiot.page (after the
+# browser redirect completes) fails with "javax.net.ssl.SSLHandshakeException:
+# PKIX path building failed" because ingress-nginx-controller presents a real
+# Cloudflare Origin Certificate signed by Cloudflare's own private Origin CA,
+# which isn't in any standard JVM trust store. Same cert/root cause and fix
+# as devtools-provision/devtools/bitbucket's and .../artifactory's
+# templates/trusted-certs.yaml. Wired in via the confluence subchart's own
+# confluence.additionalCertificates mechanism (mounts every key in this
+# secret into an init container that keytool-imports each into the JVM's
+# cacerts before Confluence starts).
+apiVersion: v1
+kind: Secret
+metadata:
+  name: confluence-trusted-certs
+  namespace: {{ .Release.Namespace }}
+type: Opaque
+stringData:
+  cloudflare-origin-ca-rsa-root.crt: |
+{{ .Files.Get "files/cloudflare-origin-ca-rsa-root.pem" | indent 4 }}
