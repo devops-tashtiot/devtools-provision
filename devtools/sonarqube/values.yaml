@@ -35,6 +35,12 @@ sonarqube:
     ingressClassName: nginx
     hosts:
       - name: sonarqube.devopstashtiot.page
+      # Per-consumer wildcard — routes every {consumer}.sonarqube.devopstashtiot.page
+      # to this same single instance (mirrors devtools-definition/devtools/argocd's
+      # equivalent per-consumer wildcard gap/workaround; see app/v1/sonarqube/CLAUDE.md
+      # in devops-api). Not real per-consumer isolation, just enough to exercise
+      # _build_client()'s live code path end-to-end against a real backend.
+      - name: "*.sonarqube.devopstashtiot.page"
     annotations:
       nginx.ingress.kubernetes.io/ssl-redirect: "false"
 
