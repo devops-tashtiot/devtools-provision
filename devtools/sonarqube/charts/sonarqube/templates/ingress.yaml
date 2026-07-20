@@ -27,7 +27,7 @@ spec:
   {{- end }}
   rules:
   {{- range .Values.ingress.hosts }}
-  - host: {{ printf "%s" .name }}
+  - host: {{ printf "%s" .name | quote }}
     http:
       paths:
       - backend:
