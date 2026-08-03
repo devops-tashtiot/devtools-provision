@@ -1,0 +1,73 @@
+# Base values — DB connection, Bitbucket forge credentials, ingress host,
+# and resource requests/limits are overridden in devtools-definition.
+
+woodpecker:
+  agent:
+    replicaCount: 2
+
+  server:
+    statefulSet:
+      replicaCount: 1
+
+    env:
+      WOODPECKER_ADMIN: "admin"
+      WOODPECKER_DATABASE_DRIVER: postgres
+
+    # Rendered by this umbrella chart's own templates/secrets.yaml — same
+    # Secret names in every environment, so wired here rather than
+    # duplicated in devtools-definition.
+    extraSecretNamesForEnvFrom:
+      - woodpecker-db
+      - woodpecker-bitbucket-dc
+
+# Values consumed only by this umbrella chart's own templates/ (not passed to
+# the woodpecker subchart) — kept under "wrapper" so they never collide with
+# the woodpecker subchart's own top-level keys above.
+wrapper:
+  # RDS master credentials (SSM SecureString paths) — used by the
+  # additionalInitContainer (see devtools-definition) that ensures this
+  # tool's database exists on the shared RDS instance, and by the
+  # woodpecker-db ExternalSecret below. Requires the external-secrets-operator
+  # devtool. Set in devtools-definition.
+  rdsAdmin:
+    usernameSsmParameter: ""
+    passwordSsmParameter: ""
+
+  # Non-secret half of the Postgres connection string. Combined with the RDS
+  # admin username/password above into a single WOODPECKER_DATABASE_DATASOURCE
+  # env var by the woodpecker-db ExternalSecret's templated target (see
+  # templates/secrets.yaml) — Woodpecker takes one connection-string env var
+  # rather than the separate url/username/password fields the Atlassian
+  # charts accept. host is set in devtools-definition once the RDS address
+  # is known.
+  database:
+    host: ""
+    port: 5432
+    name: "woodpecker"
+
+  # Bitbucket Data Center forge integration (see templates/secrets.yaml).
+  # Woodpecker's Bitbucket DC support requires an Application Link
+  # registered by hand in Bitbucket's admin UI (Administration > Application
+  # Links > Create link > choose "External Application", direction
+  # "Incoming", callback https://woodpecker.devopstashtiot.page/authorize) —
+  # there's no REST API to automate that registration — plus a Bitbucket
+  # "git machine account" username/password, since Bitbucket Server doesn't
+  # support cloning over git+https with an OAuth token. Set in
+  # devtools-definition.
+  bitbucketDcSecrets:
+    url: ""
+    clientIdSsmParameter: ""
+    clientSecretSsmParameter: ""
+    gitUsername: ""
+    gitPasswordSsmParameter: ""
+    # Bitbucket is reached at its public hostname, which in-cluster callers
+    # resolve straight to ingress-nginx via the CoreDNS rewrites in
+    # devtools-labs/terraform/modules/minikube/main.tf (bypassing Cloudflare
+    # Access, which would otherwise 302 every machine-to-machine call to its
+    # email-OTP login page). That path presents the real Cloudflare Origin CA
+    # cert, which this chart (unlike the JVM-based Atlassian devtools) has no
+    # built-in mechanism to add to Go's trust store — skip-verify is
+    # Woodpecker's own documented escape hatch for exactly this shape of
+    # internal/self-signed-from-the-client's-perspective cert, and traffic
+    # never leaves the cluster network so there's no real exposure.
+    skipVerify: true

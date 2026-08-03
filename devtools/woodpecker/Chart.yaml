@@ -1,0 +1,10 @@
+apiVersion: v2
+name: woodpecker
+description: Woodpecker CI 3.17.0
+type: application
+version: 1.0.0
+appVersion: "3.17.0"
+dependencies:
+  - name: woodpecker
+    version: "3.7.0"
+    repository: "file://./charts/woodpecker"
