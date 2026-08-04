@@ -28,3 +28,15 @@ wrapper:
     usernameSsmParameter: ""
     passwordSsmParameter: ""
   adminPasswordSsmParameter: ""
+  # OIDC/SSO against the shared RHBK instance — see templates/configure-oidc-job.yaml.
+  # Disabled by default here; devtools-definition turns it on.
+  oidc:
+    enabled: false
+    name: "RHBK"
+    endpoint: ""
+    clientId: ""
+    scope: "openid,profile,email,groups"
+    userClaim: "preferred_username"
+    groupClaim: "groups"
+    adminGroup: ""
+  oidcClientSecretSsmParameter: ""

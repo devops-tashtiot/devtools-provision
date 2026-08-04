@@ -1,0 +1,112 @@
+# Harbor's Helm chart has no OIDC values field at all (confirmed by grepping
+# charts/harbor/values.yaml — zero matches for "oidc") — OIDC only exists as
+# a REST API config, PUT /api/v2.0/configurations. Same reasoning as RHBK's
+# kcadm-based Jobs and sonarqube/templates/provision-admin-group-job.yaml:
+# no declarative field to set, so a hook Job calls the app's own admin API
+# directly.
+#
+# `post-install,post-upgrade` + `before-hook-creation` re-runs this on every
+# sync — safe to re-run: GET /api/v2.0/configurations never returns
+# oidc_client_secret back (write-only field, not even masked), so there's
+# nothing to diff against; this always does a full blind-overwrite PUT,
+# exactly like clusters-provision/clusters/rhbk's set-client-secrets-job.yaml.
+# Harbor's seed "admin" account keeps working via local DB auth even after
+# auth_mode switches to oidc_auth, so this Job never locks itself out of the
+# very API it just reconfigured.
+#
+# oidc_verify_cert is set to false: unlike ArgoCD (inline rootCA in its own
+# oidc.config) or Confluence (mounted additionalCertificates trust bundle),
+# Harbor's Configurations API has no field to trust an extra CA for its
+# outbound calls to the OIDC issuer — only this on/off toggle. RHBK is
+# fronted by Cloudflare's Origin certificate in-cluster (not a publicly
+# trusted CA), so without this, Harbor's own discovery/token-exchange calls
+# to rhbk.devopstashtiot.page would fail TLS verification. Pointing
+# oidc_endpoint at RHBK's internal cluster URL instead doesn't work either —
+# Keycloak's issued tokens carry the public issuer URL regardless of which
+# URL a backend used to reach it, so Harbor's issuer check would fail
+# instead. This is a known, accepted limitation of Harbor's OIDC integration
+# specifically (not a platform-wide TLS relaxation) — documented here per
+# request rather than engineered around further.
+{{- if .Values.wrapper.oidc.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: harbor-configure-oidc
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation
+spec:
+  backoffLimit: 20
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: configure-oidc
+          image: curlimages/curl:8.11.0
+          env:
+            - name: ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: harbor-admin-password
+                  key: HARBOR_ADMIN_PASSWORD
+            - name: OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: harbor-oidc-client-secret
+                  key: clientSecret
+            - name: OIDC_NAME
+              value: {{ .Values.wrapper.oidc.name | quote }}
+            - name: OIDC_ENDPOINT
+              value: {{ .Values.wrapper.oidc.endpoint | quote }}
+            - name: OIDC_CLIENT_ID
+              value: {{ .Values.wrapper.oidc.clientId | quote }}
+            - name: OIDC_SCOPE
+              value: {{ .Values.wrapper.oidc.scope | quote }}
+            - name: OIDC_USER_CLAIM
+              value: {{ .Values.wrapper.oidc.userClaim | quote }}
+            - name: OIDC_GROUP_CLAIM
+              value: {{ .Values.wrapper.oidc.groupClaim | quote }}
+            - name: OIDC_ADMIN_GROUP
+              value: {{ .Values.wrapper.oidc.adminGroup | quote }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -eu
+              SERVER="http://harbor-core"
+
+              echo "Waiting for Harbor core to be ready..."
+              i=0
+              until curl -sf -u "admin:$ADMIN_PASSWORD" "$SERVER/api/v2.0/systeminfo" >/dev/null 2>&1; do
+                i=$((i+1))
+                if [ "$i" -ge 60 ]; then
+                  echo "harbor-core never became ready" >&2
+                  exit 1
+                fi
+                echo "  not ready yet, retrying in 5s"
+                sleep 5
+              done
+
+              # JSON-escape the client secret only — the other fields are our
+              # own static, trusted values.yaml strings. No jq in this image.
+              ESCAPED_SECRET=$(printf '%s' "$OIDC_CLIENT_SECRET" | sed 's/\\/\\\\/g; s/"/\\"/g')
+
+              echo "Configuring Harbor OIDC auth against '$OIDC_ENDPOINT'..."
+              curl -sf -u "admin:$ADMIN_PASSWORD" -X PUT "$SERVER/api/v2.0/configurations" \
+                -H "Content-Type: application/json" \
+                -d '{
+                  "auth_mode": "oidc_auth",
+                  "oidc_name": "'"$OIDC_NAME"'",
+                  "oidc_endpoint": "'"$OIDC_ENDPOINT"'",
+                  "oidc_client_id": "'"$OIDC_CLIENT_ID"'",
+                  "oidc_client_secret": "'"$ESCAPED_SECRET"'",
+                  "oidc_scope": "'"$OIDC_SCOPE"'",
+                  "oidc_verify_cert": false,
+                  "oidc_auto_onboard": true,
+                  "oidc_user_claim": "'"$OIDC_USER_CLAIM"'",
+                  "oidc_group_claim": "'"$OIDC_GROUP_CLAIM"'",
+                  "oidc_admin_group": "'"$OIDC_ADMIN_GROUP"'"
+                }'
+              echo "Done."
+{{- end }}
