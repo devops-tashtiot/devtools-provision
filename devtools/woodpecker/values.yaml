@@ -10,14 +10,18 @@ woodpecker:
       replicaCount: 1
 
     env:
-      WOODPECKER_ADMIN: "admin"
+      # svc-devops-tashtiot (the platform's LDAP bind/service account,
+      # see devtools-labs' domain-controller module) rather than "admin" —
+      # it's the account actually used to log in and administer Woodpecker
+      # day to day on this platform.
+      WOODPECKER_ADMIN: "svc-devops-tashtiot"
       WOODPECKER_DATABASE_DRIVER: postgres
       # Any authenticated Bitbucket user can log in and register their own
       # repos, not just the WOODPECKER_ADMIN account above — Woodpecker's
       # default (registration closed to everyone but the admin) was too
       # restrictive for this platform's shared Bitbucket instance, where
-      # multiple accounts (svc-devops-tashtiot, personal logins, ...)
-      # legitimately need to use CI without being full Woodpecker admins.
+      # multiple accounts legitimately need to use CI without being full
+      # Woodpecker admins.
       WOODPECKER_OPEN: "true"
 
     # Rendered by this umbrella chart's own templates/secrets.yaml — same
