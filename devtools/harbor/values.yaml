@@ -1,0 +1,30 @@
+harbor:
+  expose:
+    type: ingress
+    tls:
+      enabled: false # TLS terminates at Cloudflare, not in-cluster
+    ingress:
+      className: nginx
+      annotations:
+        nginx.ingress.kubernetes.io/ssl-redirect: "false"
+        nginx.ingress.kubernetes.io/proxy-body-size: "0" # unlimited, for image layer pushes
+  persistence:
+    enabled: true
+    resourcePolicy: "keep"
+    imageChartStorage:
+      type: filesystem
+  database:
+    type: external
+    maxIdleConns: 100
+    maxOpenConns: 900
+  redis:
+    type: internal
+  existingSecretAdminPasswordKey: HARBOR_ADMIN_PASSWORD
+  trivy:
+    enabled: true
+
+wrapper:
+  rdsAdmin:
+    usernameSsmParameter: ""
+    passwordSsmParameter: ""
+  adminPasswordSsmParameter: ""

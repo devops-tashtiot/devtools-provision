@@ -1,0 +1,10 @@
+apiVersion: v2
+name: harbor
+description: Harbor container registry 2.15.2
+type: application
+version: 1.0.0
+appVersion: "2.15.2"
+dependencies:
+  - name: harbor
+    version: "1.19.2"
+    repository: "file://./charts/harbor"
