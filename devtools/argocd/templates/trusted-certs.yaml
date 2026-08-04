@@ -1,5 +1,5 @@
 # Cloudflare Origin CA root cert — trusted so argocd-repo-server's own outbound
-# git-over-HTTPS clone of the GitOps repo (bitbucket.devopstashtiot.page/scm/argo/argocd.git,
+# git-over-HTTPS clone of the GitOps repo (bitbucket.devopstashtiot.page/scm/devopstashtiot/argocd.git,
 # used by devops-api's create_cluster_secret) passes real certificate verification. Without
 # this, repo-server rejects the clone with "x509: certificate signed by unknown authority" —
 # confirmed live 2026-07-21, same root cause as devtools-provision/devtools/bitbucket's,
