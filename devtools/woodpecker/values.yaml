@@ -12,6 +12,13 @@ woodpecker:
     env:
       WOODPECKER_ADMIN: "admin"
       WOODPECKER_DATABASE_DRIVER: postgres
+      # Any authenticated Bitbucket user can log in and register their own
+      # repos, not just the WOODPECKER_ADMIN account above — Woodpecker's
+      # default (registration closed to everyone but the admin) was too
+      # restrictive for this platform's shared Bitbucket instance, where
+      # multiple accounts (svc-devops-tashtiot, personal logins, ...)
+      # legitimately need to use CI without being full Woodpecker admins.
+      WOODPECKER_OPEN: "true"
 
     # Rendered by this umbrella chart's own templates/secrets.yaml — same
     # Secret names in every environment, so wired here rather than
