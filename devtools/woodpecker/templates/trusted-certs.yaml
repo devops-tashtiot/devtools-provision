@@ -1,0 +1,34 @@
+{{- if .Values.wrapper.trustedCertsSsmParameter }}
+# Cloudflare Origin CA root cert — trusted so woodpecker-server's outbound
+# calls to bitbucket.devopstashtiot.page (OAuth2 token exchange, forge API)
+# pass real certificate verification instead of failing with "x509:
+# certificate signed by unknown authority". Same root cause and same SSM
+# value as argocd/bitbucket/jira/confluence/artifactory's trusted-certs.yaml
+# — ingress-nginx-controller presents a real Cloudflare Origin Certificate
+# signed by Cloudflare's own private Origin CA, not in any standard trust
+# store.
+#
+# Unlike those five, Woodpecker's server image is FROM scratch (no
+# update-ca-certificates, no shell-based trust-store mechanism at all), so
+# this Secret alone isn't enough — an initContainer (see devtools-definition)
+# mounts it alongside the image's own CA bundle and concatenates them into a
+# combined file, which is then mounted over /etc/ssl/certs/ca-certificates.crt
+# in the main container.
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: woodpecker-cloudflare-origin-ca-root
+  namespace: {{ .Release.Namespace }}
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: aws-parameter-store
+    kind: ClusterSecretStore
+  target:
+    name: woodpecker-cloudflare-origin-ca-root
+    creationPolicy: Owner
+  data:
+    - secretKey: origin-ca-root.pem
+      remoteRef:
+        key: {{ .Values.wrapper.trustedCertsSsmParameter | quote }}
+{{- end }}

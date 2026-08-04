@@ -54,20 +54,35 @@ wrapper:
   # "git machine account" username/password, since Bitbucket Server doesn't
   # support cloning over git+https with an OAuth token. Set in
   # devtools-definition.
+  #
+  # Bitbucket is reached at its public hostname, which in-cluster callers
+  # resolve straight to ingress-nginx via the CoreDNS rewrites in
+  # devtools-labs/terraform/modules/minikube/main.tf (bypassing Cloudflare
+  # Access, which would otherwise 302 every machine-to-machine call to its
+  # email-OTP login page). That path presents the real Cloudflare Origin CA
+  # cert. Woodpecker's WOODPECKER_BITBUCKET_DC_SKIP_VERIFY only disables TLS
+  # verification for git clone/API calls, not for the OAuth2 token exchange
+  # (server/forge/bitbucketdatacenter has no SkipVerify field at all — see
+  # https://github.com/woodpecker-ci/woodpecker/blob/v3.17.0/server/forge/bitbucketdatacenter/bitbucketdatacenter.go),
+  # so it can't fix login. Instead the Cloudflare Origin CA root cert is
+  # trusted properly, the same way argocd/bitbucket/jira/confluence/
+  # artifactory already do (see trustedCertsSsmParameter below and
+  # templates/trusted-certs.yaml) — no skip-verify anywhere.
   bitbucketDcSecrets:
     url: ""
     clientIdSsmParameter: ""
     clientSecretSsmParameter: ""
     gitUsername: ""
     gitPasswordSsmParameter: ""
-    # Bitbucket is reached at its public hostname, which in-cluster callers
-    # resolve straight to ingress-nginx via the CoreDNS rewrites in
-    # devtools-labs/terraform/modules/minikube/main.tf (bypassing Cloudflare
-    # Access, which would otherwise 302 every machine-to-machine call to its
-    # email-OTP login page). That path presents the real Cloudflare Origin CA
-    # cert, which this chart (unlike the JVM-based Atlassian devtools) has no
-    # built-in mechanism to add to Go's trust store — skip-verify is
-    # Woodpecker's own documented escape hatch for exactly this shape of
-    # internal/self-signed-from-the-client's-perspective cert, and traffic
-    # never leaves the cluster network so there's no real exposure.
-    skipVerify: true
+
+  # SSM Parameter Store path (SecureString) holding the Cloudflare Origin CA
+  # root cert — same value argocd/bitbucket/jira/confluence/artifactory's
+  # trusted-certs.yaml already use. Synced by templates/trusted-certs.yaml
+  # into a Secret, then combined with the image's own CA bundle by an
+  # initContainer and mounted over /etc/ssl/certs/ca-certificates.crt (see
+  # devtools-definition's server.initContainers/extraVolumes) — Woodpecker's
+  # server image is FROM scratch with no shell to run update-ca-certificates
+  # in-place, so the combined bundle has to be built by an init container
+  # and mounted in whole. Requires the external-secrets-operator devtool.
+  # Set in devtools-definition.
+  trustedCertsSsmParameter: ""
