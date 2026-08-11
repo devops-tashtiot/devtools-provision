@@ -52,6 +52,29 @@ sonarqube:
   plugins:
     install:
       - "https://github.com/sonar-auth-oidc/sonar-auth-oidc/releases/download/v3.0.0/sonar-auth-oidc-plugin-3.0.0.jar"
+      # sonarqube-community-branch-plugin adds branch/PR analysis to Community
+      # Edition (an Enterprise-only feature natively). Unlike a normal plugin
+      # it isn't a passive drop-in — it must be attached as a -javaagent to
+      # both the Web and Compute Engine JVMs (see sonarProperties below), or
+      # SonarQube ignores it. install_plugins.sh curls each URL fresh into
+      # extensions/plugins/ on every start, saving it under the URL basename
+      # (sonarqube-community-branch-plugin-25.5.0.jar) — the javaagent paths
+      # below must match that exact filename.
+      # NOTE: plugin 25.5.0 is built for the SonarQube 25.5 line; the image
+      # above is 25.6.0.109173-community. The plugin rewrites SonarQube
+      # bytecode and is version-sensitive, so a 25.5 → 25.6 skew may need a
+      # matching plugin bump (26.5.0 is the next release) if startup fails.
+      - "https://github.com/mc1arke/sonarqube-community-branch-plugin/releases/download/25.5.0/sonarqube-community-branch-plugin-25.5.0.jar"
+
+  # Env-invariant sonar.properties. The two javaAdditionalOpts attach the
+  # community-branch-plugin jar (installed via plugins.install above) as a
+  # -javaagent to the Web ("=web") and Compute Engine ("=ce") JVMs — the
+  # plugin does nothing without them. The "./" is relative to SONARQUBE_HOME
+  # (/opt/sonarqube), where install_plugins.sh drops the jar. These deep-merge
+  # with the env-specific sonarProperties (OIDC settings) in devtools-definition.
+  sonarProperties:
+    sonar.web.javaAdditionalOpts: "-javaagent:./extensions/plugins/sonarqube-community-branch-plugin-25.5.0.jar=web"
+    sonar.ce.javaAdditionalOpts: "-javaagent:./extensions/plugins/sonarqube-community-branch-plugin-25.5.0.jar=ce"
 
   persistence:
     enabled: true
