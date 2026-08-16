@@ -1,0 +1,34 @@
+# Cloudflare Origin CA root cert — trusted so SonarQube's own outbound TLS
+# calls to *.devopstashtiot.page pass real certificate verification. Needed
+# for the RHBK/Keycloak OIDC SSO login flow specifically: SonarQube's
+# server-side OIDC discovery fetch (issuerUri's /.well-known/openid-configuration,
+# via sonar-auth-oidc) fails with "javax.net.ssl.SSLHandshakeException: PKIX
+# path building failed" because ingress-nginx-controller presents a real
+# Cloudflare Origin Certificate signed by Cloudflare's own private Origin CA,
+# which isn't in any standard JVM trust store — confirmed live in the
+# sonarqube-sonarqube-0 pod's logs. Same cert/root cause as
+# devtools-provision/devtools/{argocd,bitbucket,jira,confluence,artifactory,
+# woodpecker}'s trusted-certs.yaml. Sourced from SSM (published once by
+# devtools-labs Terraform's devtools-secrets module) rather than a PEM file
+# committed here, so the same public root cert isn't duplicated in git across
+# every devtool. Wired in via the sonarqube subchart's own caCerts mechanism
+# (values.yaml's sonarqube.caCerts) — an initContainer keytool-imports every
+# key in this Secret into a cacerts file, then SONAR_WEB_JAVAOPTS/
+# SONAR_CE_JAVAOPTS point -Djavax.net.ssl.trustStore at it automatically.
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: sonarqube-trusted-certs
+  namespace: {{ .Release.Namespace }}
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: aws-parameter-store
+    kind: ClusterSecretStore
+  target:
+    name: sonarqube-trusted-certs
+    creationPolicy: Owner
+  data:
+    - secretKey: cloudflare-origin-ca-rsa-root.crt
+      remoteRef:
+        key: {{ .Values.wrapper.trustedCertsSsmParameter | quote }}

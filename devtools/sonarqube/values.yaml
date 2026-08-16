@@ -93,6 +93,14 @@ sonarqube:
   # a credential to an external system) — set in devtools-definition.
   monitoringPasscode: ""
 
+  # Trusts the Cloudflare Origin CA root cert (see wrapper.trustedCertsSsmParameter
+  # below and templates/trusted-certs.yaml) so SonarQube's own outbound OIDC
+  # discovery/token calls to rhbk.devopstashtiot.page pass certificate
+  # verification instead of failing with "PKIX path building failed".
+  caCerts:
+    enabled: true
+    secret: sonarqube-trusted-certs
+
   # Bootstraps the admin password at container startup instead of the manual
   # setup wizard — SonarQube Community Edition supports this natively via a
   # Secret with "password"/"currentPassword" keys (unlike Jira, which has no
@@ -130,6 +138,13 @@ wrapper:
   # templates/provision-admin-group-job.yaml. Set in devtools-definition.
   adminGroup:
     name: ""
+
+  # SSM Parameter Store path (SecureString) holding the Cloudflare Origin CA
+  # root cert (PEM) — see templates/trusted-certs.yaml. Same shared value
+  # published once by devtools-labs Terraform's devtools-secrets module and
+  # consumed by every other JVM devtool's own trusted-certs.yaml. Set in
+  # devtools-definition.
+  trustedCertsSsmParameter: ""
 
   # Renders every dashboards/*.json file (see templates/dashboards.yaml) as a
   # Grafana-sidecar-discoverable ConfigMap — same mechanism as
