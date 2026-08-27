@@ -47,8 +47,12 @@ confluence:
     sharedHome:
       persistentVolumeClaim:
         create: true
-        accessModes:
-          - ReadWriteOnce
+        # No accessModes override — falls back to the vendored chart's own
+        # ReadWriteMany default (Atlassian's documented Data Center
+        # "SHARED_STORAGE" pattern), matching Bitbucket's and Jira's
+        # sharedHome — all three now use the EFS-backed StorageClass
+        # (devtools-definition/devtools/confluence/values.yaml), which
+        # supports RWX; plain EBS does not.
         storageClassName: gp2
         resources:
           requests:
@@ -94,6 +98,26 @@ confluence:
     # explanation).
     additionalCertificates:
       secretName: confluence-trusted-certs
+
+    # Avisi Apps "User Directory API" — REST endpoints to list directories,
+    # list users in a directory, and force an immediate sync against the
+    # external user directory (see
+    # marketplace.atlassian.com/plugins/nl.avisi.atlassian.confluence.user-directory-api).
+    # Pinned jar version 1.1.9 requires Confluence Data Center 10.0.1-10.2.11;
+    # this devtool currently runs 9.3.2 (see image.tag above) — wired in
+    # anyway per explicit decision, but expect it may fail to load or
+    # misbehave until Confluence is upgraded into that range.
+    # The jar itself is fetched into shared-home/plugins by the
+    # download-user-directory-api-plugin initContainer in
+    # devtools-definition/devtools/confluence/values.yaml's
+    # additionalInitContainers — that list lives in -definition (not here)
+    # because Helm replaces, rather than merges, list-typed values across the
+    # provision/definition value-file pair, and -definition already owns
+    # that list for the ensure-postgres-db init container.
+    additionalBundledPlugins:
+      - volumeName: shared-home
+        subDirectory: plugins
+        fileName: nl.avisi.atlassian.confluence.user-directory-api-1.1.9.jar
 
   synchrony:
     resources:

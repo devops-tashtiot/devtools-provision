@@ -4,8 +4,12 @@ metadata:
   name: bitbucket-shared-home
   namespace: {{ .Release.Namespace }}
 spec:
+  # ReadWriteMany, matching Confluence's and Jira's sharedHome — Atlassian's
+  # documented Data Center "SHARED_STORAGE" pattern. Needs the EFS-backed
+  # StorageClass (see devtools-definition/devtools/bitbucket/values.yaml);
+  # plain EBS can't satisfy RWX.
   accessModes:
-    - ReadWriteOnce
+    - ReadWriteMany
   storageClassName: {{ .Values.bitbucket.volumes.sharedHome.storageClassName }}
   resources:
     requests:

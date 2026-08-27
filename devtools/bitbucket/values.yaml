@@ -87,6 +87,27 @@ bitbucket:
     additionalCertificates:
       secretName: bitbucket-trusted-certs
 
+    # Avisi Apps "User Directory API" — REST endpoints to list directories,
+    # list users in a directory, and force an immediate sync against the
+    # external user directory (see
+    # marketplace.atlassian.com/apps/1212913/user-directory-api-for-bitbucket).
+    # Pinned jar version 1.1.9 requires Bitbucket Data Center 10.0.0-10.4.2;
+    # this devtool currently runs 10.2.2 (Chart.yaml appVersion) — compatible.
+    # The jar itself is fetched into shared-home/plugins by the
+    # download-user-directory-api-plugin initContainer in
+    # devtools-definition/devtools/bitbucket/values.yaml's
+    # additionalInitContainers — that list lives in -definition (not here)
+    # because Helm replaces, rather than merges, list-typed values across the
+    # provision/definition value-file pair, and -definition already owns
+    # that list for the ensure-postgres-db init container. Also note
+    # bitbucket's shared-home nfsPermissionFixer is disabled here (see
+    # volumes.sharedHome below) — the download init container is independent
+    # of that mechanism, so this works regardless.
+    additionalBundledPlugins:
+      - volumeName: shared-home
+        subDirectory: plugins
+        fileName: nl.avisi.atlassian.stash.user-directory-api-1.1.9.jar
+
 # Values consumed only by this umbrella chart's own templates/ (not passed to
 # the bitbucket subchart) — kept under "wrapper" so they never collide with
 # the bitbucket subchart's own top-level key above.

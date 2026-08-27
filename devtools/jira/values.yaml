@@ -81,6 +81,25 @@ jira:
     additionalCertificates:
       secretName: jira-trusted-certs
 
+    # Avisi Apps "User Directory API" — REST endpoints to list directories,
+    # list users in a directory, and force an immediate sync against the
+    # external user directory (see marketplace.atlassian.com/apps/1212839).
+    # Pinned jar version 1.1.9 requires Jira Data Center 11.0.0-11.3.10; this
+    # devtool currently runs 9.12.8 (Chart.yaml appVersion) — wired in anyway
+    # per explicit decision, but expect it may fail to load or misbehave
+    # until Jira is upgraded into that range.
+    # The jar itself is fetched into shared-home/plugins by the
+    # download-user-directory-api-plugin initContainer in
+    # devtools-definition/devtools/jira/values.yaml's additionalInitContainers
+    # — that list lives in -definition (not here) because Helm replaces,
+    # rather than merges, list-typed values across the provision/definition
+    # value-file pair, and -definition already owns that list for the
+    # ensure-postgres-db init container.
+    additionalBundledPlugins:
+      - volumeName: shared-home
+        subDirectory: plugins
+        fileName: nl.avisi.atlassian.user-directory-api-1.1.9.jar
+
 # Secret placeholders — all overridden in devtools-definition.
 #
 # NOTE: unlike bitbucket, Jira's Docker image/Helm chart has no built-in
