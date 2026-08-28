@@ -43,37 +43,37 @@ example-fast-api:
     secrets:
       - secretKey: BITBUCKET_USERNAME
         remoteRef:
-          key: /devtools/domain-controller/ldap-bind-username
+          key: /devops/terraform-created/domain-controller/ldap-bind-username
       - secretKey: BITBUCKET_PASSWORD
         remoteRef:
-          key: /devtools/domain-controller/ldap-bind-password
+          key: /devops/terraform-created/domain-controller/ldap-bind-password
       - secretKey: CONFLUENCE_USERNAME
         remoteRef:
-          key: /devtools/domain-controller/ldap-bind-username
+          key: /devops/terraform-created/domain-controller/ldap-bind-username
       - secretKey: CONFLUENCE_PASSWORD
         remoteRef:
-          key: /devtools/domain-controller/ldap-bind-password
+          key: /devops/terraform-created/domain-controller/ldap-bind-password
       - secretKey: JIRA_USERNAME
         remoteRef:
-          key: /devtools/domain-controller/ldap-bind-username
+          key: /devops/terraform-created/domain-controller/ldap-bind-username
       - secretKey: JIRA_PASSWORD
         remoteRef:
-          key: /devtools/domain-controller/ldap-bind-password
+          key: /devops/terraform-created/domain-controller/ldap-bind-password
       - secretKey: SONARQUBE_USERNAME
         remoteRef:
-          key: /devtools/domain-controller/ldap-bind-username
+          key: /devops/terraform-created/domain-controller/ldap-bind-username
       - secretKey: SONARQUBE_PASSWORD
         remoteRef:
-          key: /devtools/domain-controller/ldap-bind-password
+          key: /devops/terraform-created/domain-controller/ldap-bind-password
       - secretKey: ARTIFACTORY_USERNAME
         remoteRef:
-          key: /devtools/domain-controller/ldap-bind-username
+          key: /devops/terraform-created/domain-controller/ldap-bind-username
       - secretKey: ARTIFACTORY_PASSWORD
         remoteRef:
-          key: /devtools/domain-controller/ldap-bind-password
+          key: /devops/terraform-created/domain-controller/ldap-bind-password
       - secretKey: GIT_USERNAME
         remoteRef:
-          key: /devtools/domain-controller/ldap-bind-username
+          key: /devops/terraform-created/domain-controller/ldap-bind-username
 
   # image, env set per environment in devtools-definition.
   image:

@@ -108,8 +108,8 @@ jira:
 # ATL_LICENSE_KEY/SETUP_LICENSE/sysadminCredentials support exists for Jira).
 # Since nothing in the chart would ever read a jira-license/jira-sysadmin
 # Secret, we deliberately don't create one — that would just be inert
-# plumbing. The license lives in SSM at /devtools/jira/license and the shared
-# admin password at /devtools/admin/password; read them directly with
+# plumbing. The license lives in SSM at /devops/prerequisite/jira/license and the shared
+# admin password at /devops/terraform-created/admin/password; read them directly with
 # `aws ssm get-parameter --with-decryption` for the one-time manual setup
 # wizard instead.
 # Values consumed only by this umbrella chart's own templates/ (not passed to

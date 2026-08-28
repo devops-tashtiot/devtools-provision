@@ -9,16 +9,12 @@ infra-level tools).
 
 ## Role in the Architecture
 
-ArgoCD's `ApplicationSet` (in `devtools-definition/applicationset.yaml`) auto-discovers
-every directory under `devtools/*` here and deploys it with two Helm value sources merged
-in order:
-
-1. `devtools/<tool>/values.yaml` (this repo — values that don't change per environment)
-2. `devtools-definition/devtools/<tool>/values.yaml` (overrides on top — see that repo's
-   `CLAUDE.md`)
-
-A tool directory must exist in both repos under the identical name, or the
-`ApplicationSet`'s unconditional `$definition` reference fails.
+ArgoCD's `ApplicationSet` (in `devtools-definition/applicationset.yaml`) auto-discovers every
+directory under `devtools/*` here and deploys it from two merged Helm value sources:
+`devtools/<tool>/values.yaml` (this repo, env-invariant defaults) applied first, then
+`devtools-definition/devtools/<tool>/values.yaml` overriding on top. A tool directory must
+exist in both repos under the identical name, or the `ApplicationSet`'s unconditional
+`$definition` reference fails.
 
 ## Repository Structure
 
@@ -42,26 +38,21 @@ freehanding templates).
 ## Conventions specific to devtools (see the `add-devtool` skill for the full checklist)
 
 - **Data Center / self-hosted edition only** — never the SaaS/cloud variant. Version asked from the user.
-- **Database** — every tool that needs Postgres reuses the one shared `devtools-rds`
-  instance; its own database is created lazily by an `additionalInitContainer`/
-  `customInitContainersBegin` init container wired in `devtools-definition`, never a new RDS
-  instance or a manual `psql` session. **Connect as the shared RDS admin user, not a
-  dedicated per-tool role.** The `<tool>-db` Secret's `username`/`password` keys should come
-  from an `ExternalSecret` pointed at the same `rdsAdmin.usernameSsmParameter`/
-  `passwordSsmParameter` SSM params (see `bitbucket`/`confluence`/`jira`/`sonarqube`'s
-  `templates/secrets.yaml` for the pattern — a plain Secret for non-secret values like `url`,
-  merged with an `ExternalSecret` using `creationPolicy: Merge` for `username`/`password`).
-  The init container then only needs to `CREATE DATABASE ... OWNER <admin>` if missing — no
-  `CREATE ROLE`/`ALTER ROLE`/`GRANT`. Don't invent a dedicated role (e.g. a shared
-  `devtools-apps` name) with its own hardcoded password: if two tools' init containers both
-  manage the same role name with different passwords, every pod restart of either tool
-  silently overwrites the other's password, causing recurring Postgres "password
-  authentication failed" crash loops that look unrelated to whatever just changed. (This
-  exact bug took down Artifactory on 2026-07-07 — see `devtools-definition`'s Artifactory/Xray
-  git history around that date, fixed in `devtools-provision@c088577` /
-  `devtools-definition@d56e1da`.)
+- **Database** — every tool needing Postgres reuses the one shared `devtools-rds` instance;
+  its own database is created lazily by an init container wired in `devtools-definition`
+  (`additionalInitContainer`/`customInitContainersBegin`), never a new RDS instance or a
+  manual `psql` session. **Connect as the shared RDS admin user, not a dedicated per-tool
+  role** — the `<tool>-db` Secret's `username`/`password` come from an `ExternalSecret`
+  pointed at `rdsAdmin.usernameSsmParameter`/`passwordSsmParameter` (see
+  `bitbucket`/`confluence`/`jira`/`sonarqube`'s `templates/secrets.yaml`), and the init
+  container only needs `CREATE DATABASE ... OWNER <admin>` if missing — no `CREATE ROLE`.
+  Don't invent a dedicated shared role with its own hardcoded password: two tools' init
+  containers managing the same role name with different passwords means every pod restart of
+  either silently overwrites the other's password, causing recurring "password authentication
+  failed" crash loops that look unrelated to whatever just changed — this exact bug took down
+  Artifactory on 2026-07-07 (fixed in `devtools-provision@c088577`/`devtools-definition@d56e1da`).
 - **Admin password** — every devtool shares one SSM parameter,
-  `/devtools/admin/password`, wired via an `ExternalSecret` with `creationPolicy: Merge`.
+  `/devops/terraform-created/admin/password`, wired via an `ExternalSecret` with `creationPolicy: Merge`.
   Never create a per-tool admin password parameter.
 - **License keys** — SSM `SecureString` + `ExternalSecret`, never plaintext in git.
   Confirm the chart actually consumes a license/sysadmin Secret at container startup before

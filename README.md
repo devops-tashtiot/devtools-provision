@@ -31,7 +31,7 @@ upstream chart under `charts/<subchart>/` (never a `.tgz`) via a `file://` depen
   `../tashtiot-apis/docker-compose.<tool>.yaml`.
 - Shared Postgres instance (`devtools-rds`) — each tool provisions its own database/role
   lazily via an init container, no separate RDS instance per tool.
-- One shared admin password (`/devtools/admin/password` in SSM) across every tool.
+- One shared admin password (`/devops/terraform-created/admin/password` in SSM) across every tool.
 - License keys, where applicable, go through SSM + `ExternalSecret` — never plaintext.
 
 ## Adding a new tool
