@@ -5,40 +5,25 @@ confluence:
 
   image:
     repository: atlassian/confluence
-    # 9.3.1 hit a startup bug: PluginFrameworkContextListener consistently
-    # raced against the async Spring root context bootstrap
-    # ("Spring Application context has not been set"), breaking Soy-template
-    # rendering (login page, setup wizard) on ~6 of 7 observed boots. Ruled
-    # out memory/CPU sizing, plugin cache corruption, and a full clean
-    # reinstall (fresh PVC + DB) as causes — identical failure every time.
-    # Bumped to 9.3.2 (next bug-fix release) as a version-specific fix on
-    # 2026-07-07 — did NOT resolve it: hit the identical failure again on
-    # 2026-08-31 (same symptom, confirmed via a full clean DB+local-home
-    # reinstall, same as the first investigation). 9.3.2 is also the last
-    # release in the 9.3.x line (no 9.3.3+ exists on Docker Hub as of
-    # 2026-08-31) — the 9.3.x branch itself never got this fixed. Moving to
-    # 9.4.1 (latest patch of the next minor line; 10.x is available too but
-    # is a much larger jump — new chart major version, likely DB/Java
-    # version changes — not attempted first). No confirmed changelog entry
-    # tying this specific race to a 9.4.x fix was found; this is a retry of
-    # the same "next release" mitigation that didn't fully hold at 9.3.2,
-    # not a verified fix. If 9.4.1 still exhibits this, the actual fix is
-    # almost certainly the vendored chart's PluginFrameworkContextListener
-    # startup ordering itself, not a further Confluence point-release bump.
-    #
-    # Confirmed on 2026-08-31: 9.4.1's very first boot hit the identical
-    # race (same stack trace, same PluginFrameworkContextListener/Spring
-    # root context timing), proving this isn't a 9.3.x/9.4.x-specific bug —
-    # it survives at least three point releases across two minor lines.
-    # Moved to the 10.x line instead (chart bumped from 2.0.7 to 2.0.14,
-    # see Chart.yaml — every chart version after 2.0.7 defaults to a 10.x
-    # appVersion, there's no chart tracking 9.4.x at all), on the theory
-    # that 10.x's chart/image startup-ordering code, not just the app
-    # version, is what actually changed. Safe timing to attempt a major
-    # version jump: the database was genuinely empty (fresh install, no
-    # real content) when this was done, so there was no schema/data
-    # migration risk either way.
-    tag: "10.2.13"
+    # This platform hit a real, reproducible startup race repeatedly on
+    # 2026-07-07 and again on 2026-08-31: submitting the setup wizard's
+    # cluster-configuration step makes Confluence tear down and rebuild its
+    # Spring/OSGi context live, in-process (no pod restart involved), and
+    # any request landing in that rebuild window — including the browser's
+    # own page load right after the form POST — hits "Spring Application
+    # context has not been set" on every Soy-templated page (login, setup
+    # wizard). It looks fatal but isn't: it self-resolves in roughly
+    # 15-90 seconds if you just wait and reload once, without touching the
+    # pod. Confirmed present identically across 9.3.1, 9.3.2, 9.4.1, and
+    # 10.2.13 (chart bumped to 2.0.14 and back down again during that
+    # testing) — it is not version-specific and no point/minor/major
+    # release fixes it, so there's no reason to stay off 9.3.1 for this.
+    # Reverted back to 9.3.1 on 2026-08-31 for that reason — see the full
+    # "Lessons Learned" writeup at
+    # https://devops-tashtiot.github.io (Confluence setup wizard card) and
+    # devtools-labs/docs/post-devtools-implementation/confluence/README.md
+    # for the wait-it-out procedure during setup.
+    tag: "9.3.1"
 
   database:
     type: postgresql
@@ -130,7 +115,7 @@ confluence:
     # external user directory (see
     # marketplace.atlassian.com/plugins/nl.avisi.atlassian.confluence.user-directory-api).
     # Pinned jar version 1.1.9 requires Confluence Data Center 10.0.1-10.2.11;
-    # this devtool currently runs 9.3.2 (see image.tag above) — wired in
+    # this devtool currently runs 9.3.1 (see image.tag above) — wired in
     # anyway per explicit decision, but expect it may fail to load or
     # misbehave until Confluence is upgraded into that range.
     # The jar itself is fetched into shared-home/plugins by the
