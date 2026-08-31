@@ -11,8 +11,24 @@ confluence:
     # rendering (login page, setup wizard) on ~6 of 7 observed boots. Ruled
     # out memory/CPU sizing, plugin cache corruption, and a full clean
     # reinstall (fresh PVC + DB) as causes — identical failure every time.
-    # Trying 9.3.2 (next bug-fix release) as a version-specific fix.
-    tag: "9.3.2"
+    # Bumped to 9.3.2 (next bug-fix release) as a version-specific fix on
+    # 2026-07-07 — did NOT resolve it: hit the identical failure again on
+    # 2026-08-31 (same symptom, confirmed via a full clean DB+local-home
+    # reinstall, same as the first investigation). 9.3.2 is also the last
+    # release in the 9.3.x line (no 9.3.3+ exists on Docker Hub as of
+    # 2026-08-31) — the 9.3.x branch itself never got this fixed. Moving to
+    # 9.4.1 (latest patch of the next minor line; 10.x is available too but
+    # is a much larger jump — new chart major version, likely DB/Java
+    # version changes — not attempted first). No confirmed changelog entry
+    # tying this specific race to a 9.4.x fix was found; this is a retry of
+    # the same "next release" mitigation that didn't fully hold at 9.3.2,
+    # not a verified fix. If 9.4.1 still exhibits this, the actual fix is
+    # almost certainly the vendored chart's PluginFrameworkContextListener
+    # startup ordering itself (see charts/confluence's upstream chart,
+    # currently pinned to chart version 2.0.7 — the closest available chart
+    # to any 9.x appVersion; every later chart version jumps straight to a
+    # 10.x default appVersion), not a further Confluence point-release bump.
+    tag: "9.4.1"
 
   database:
     type: postgresql
