@@ -24,11 +24,21 @@ confluence:
     # the same "next release" mitigation that didn't fully hold at 9.3.2,
     # not a verified fix. If 9.4.1 still exhibits this, the actual fix is
     # almost certainly the vendored chart's PluginFrameworkContextListener
-    # startup ordering itself (see charts/confluence's upstream chart,
-    # currently pinned to chart version 2.0.7 — the closest available chart
-    # to any 9.x appVersion; every later chart version jumps straight to a
-    # 10.x default appVersion), not a further Confluence point-release bump.
-    tag: "9.4.1"
+    # startup ordering itself, not a further Confluence point-release bump.
+    #
+    # Confirmed on 2026-08-31: 9.4.1's very first boot hit the identical
+    # race (same stack trace, same PluginFrameworkContextListener/Spring
+    # root context timing), proving this isn't a 9.3.x/9.4.x-specific bug —
+    # it survives at least three point releases across two minor lines.
+    # Moved to the 10.x line instead (chart bumped from 2.0.7 to 2.0.14,
+    # see Chart.yaml — every chart version after 2.0.7 defaults to a 10.x
+    # appVersion, there's no chart tracking 9.4.x at all), on the theory
+    # that 10.x's chart/image startup-ordering code, not just the app
+    # version, is what actually changed. Safe timing to attempt a major
+    # version jump: the database was genuinely empty (fresh install, no
+    # real content) when this was done, so there was no schema/data
+    # migration risk either way.
+    tag: "10.2.13"
 
   database:
     type: postgresql

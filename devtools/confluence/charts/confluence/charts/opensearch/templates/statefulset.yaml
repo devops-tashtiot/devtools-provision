@@ -27,9 +27,14 @@ spec:
   volumeClaimTemplates:
   - metadata:
       name: {{ template "opensearch.uname" . }}
-    {{- if .Values.persistence.labels.enabled }}
+    {{- if or .Values.persistence.labels.enabled .Values.persistence.labels.additionalLabels }}
       labels:
-        {{- include "opensearch.labels" . | nindent 8 }}
+        {{- if .Values.persistence.labels.enabled }}
+          {{- include "opensearch.labels" . | nindent 8 }}
+        {{- end }}
+        {{- with .Values.persistence.labels.additionalLabels }}
+          {{- toYaml . | nindent 8 }}
+        {{- end }}
     {{- end }}
     {{- with .Values.persistence.annotations  }}
       annotations:
@@ -287,6 +292,8 @@ spec:
         - |
           #!/usr/bin/env bash
           cp -r /tmp/configfolder/*  /tmp/config/
+        securityContext:
+{{ toYaml .Values.securityContext | indent 10 }}
         resources:
           {{- toYaml .Values.initResources | nindent 10 }}
         volumeMounts:
@@ -327,6 +334,8 @@ spec:
           cp -a {{ .Values.opensearchHome }}/config/opensearch.keystore /tmp/keystore/
         env: {{ toYaml .Values.extraEnvs | nindent 10 }}
         envFrom: {{ toYaml .Values.envFrom | nindent 10 }}
+        securityContext:
+{{ toYaml .Values.securityContext | indent 10 }}
         resources:
           {{- toYaml .Values.initResources | nindent 10 }}
         volumeMounts:
@@ -359,6 +368,12 @@ spec:
         - |
           #!/usr/bin/env bash
           set -euo pipefail
+
+          {{- range $plugin := .Values.plugins.removeList }}
+          if ./bin/opensearch-plugin list | grep -q {{ $plugin }}; then
+          ./bin/opensearch-plugin remove {{ $plugin }}
+          fi
+          {{- end }}
 
           {{- range $plugin := .Values.plugins.installList }}
           ./bin/opensearch-plugin install -b {{ $plugin }}

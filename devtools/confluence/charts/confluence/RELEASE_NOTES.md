@@ -1,3 +1,2 @@
-* Update appVersions for DC apps (#1058)
-* Synchrony: support additional env vars (#1057)
-* fix: move ErrorReportValve to the correct line (#1055)
+* Update appVersions for DC apps (#1132)
+* feat(confluence): make synchrony readinessProbe timeoutSeconds configurable (#1117)

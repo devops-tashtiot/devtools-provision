@@ -1,0 +1,6 @@
+dependencies:
+- name: confluence
+  repository: file://./charts/confluence
+  version: 2.0.14
+digest: sha256:c3e62888b550eb1530e1f4f50efde847198151b6609562dded3b35c4759eb276
+generated: "2026-08-31T17:33:53.695475702+03:00"

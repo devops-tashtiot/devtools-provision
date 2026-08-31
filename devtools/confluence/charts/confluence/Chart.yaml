@@ -1,11 +1,10 @@
 annotations:
   artifacthub.io/changes: |-
-    - "Update appVersions for DC apps (#1058)"
-    - "Synchrony: support additional env vars (#1057)"
-    - "fix: move ErrorReportValve to the correct line (#1055)"
+    - "Update appVersions for DC apps (#1132)"
+    - "feat(confluence): make synchrony readinessProbe timeoutSeconds configurable (#1117)"
   artifacthub.io/containsSecurityUpdates: "true"
 apiVersion: v2
-appVersion: 9.2.10
+appVersion: 10.2.13
 dependencies:
 - name: common
   repository: https://atlassian.github.io/data-center-helm-charts
@@ -13,7 +12,7 @@ dependencies:
 - condition: opensearch.enabled
   name: opensearch
   repository: https://opensearch-project.github.io/helm-charts
-  version: 2.19.0
+  version: 3.5.0
 description: A chart for installing Confluence Data Center on Kubernetes
 home: https://atlassian.github.io/data-center-helm-charts/
 icon: https://atlassian.github.io/data-center-helm-charts/icons/confluence.svg
@@ -29,4 +28,4 @@ sources:
 - https://github.com/atlassian/data-center-helm-charts
 - https://bitbucket.org/atlassian-docker/docker-atlassian-confluence-server/
 type: application
-version: 2.0.7
+version: 2.0.14
