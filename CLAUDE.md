@@ -63,8 +63,13 @@ freehanding templates).
 
 ## Currently tracked tools
 
-`argocd`, `artifactory`, `bitbucket`, `confluence`, `jira`, `xray` — each an umbrella chart
-under `devtools/<tool>/`.
+`argocd`, `bitbucket`, `confluence`, `jira`, `jfrog-platform` — each an umbrella chart under
+`devtools/<tool>/`. `jfrog-platform` replaces the former separate `artifactory` and `xray`
+devtools — it vendors JFrog's own combined `jfrog-platform` chart, which deploys both
+Artifactory and Xray (plus optional catalog/distribution/worker, left disabled) as one Helm
+release instead of two independent ones. `devtools-definition/devtools/jfrog-platform/` must
+carry a matching directory name for the ApplicationSet's `$definition` source reference to
+resolve.
 
 ## Adding a New Tool
 

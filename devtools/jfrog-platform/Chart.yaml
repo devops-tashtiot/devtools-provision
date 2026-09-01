@@ -1,0 +1,10 @@
+apiVersion: v2
+name: jfrog-platform
+description: JFrog Platform (Artifactory 7.117.15 + Xray 3.124.20)
+type: application
+version: 1.0.0
+appVersion: "7.117.15"
+dependencies:
+  - name: jfrog-platform
+    version: "11.2.2"
+    repository: "file://./charts/jfrog-platform"

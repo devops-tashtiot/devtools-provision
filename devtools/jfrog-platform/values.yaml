@@ -1,0 +1,270 @@
+# Base values — DB host and every secret are overridden in devtools-definition.
+#
+# Merges the two previously-separate devtools (devtools/artifactory,
+# devtools/xray) into JFrog's own combined "jfrog-platform" umbrella chart,
+# which vendors Artifactory + Xray (+ optional catalog/distribution/worker,
+# all left disabled) as one Helm release instead of two independent ones.
+# This is the same edition/version pairing the two standalone devtools were
+# already running (Artifactory 7.117.15, Xray 3.124.20) — only the chart
+# shape changed, not the product versions. See devtools/jfrog-platform/charts/
+# jfrog-platform/README.md for the full upstream values reference.
+#
+# Upstream chart quirk (same as the old devtools/artifactory and
+# devtools/xray values.yaml — this platform chart just wraps the identical
+# artifactory/xray subcharts): some fields are read by the artifactory/xray
+# subchart templates at the subchart's own top level (`.Values.database`),
+# while others are read self-prefixed (`.Values.artifactory.admin`,
+# `.Values.xray.jfrogUrl`). Values under the platform chart's own
+# "artifactory:"/"xray:" keys pass straight down into the matching subchart
+# unprefixed, same mechanism as before — just consolidated into one release.
+#
+# One extra nesting level vs. the old charts: this umbrella's dependency is
+# itself named "jfrog-platform" (unlike devtools/artifactory, where the
+# umbrella and its vendored dependency happened to share the name
+# "artifactory"), so every value meant for that dependency has to live under
+# a top-level "jfrog-platform:" key here — except "global", which Helm
+# always shares across every level of the dependency tree regardless of
+# nesting, so it stays unnested like before.
+
+# "global" is a real Helm reserved key AND this chart's own convention for
+# settings shared across every product it deploys (Artifactory, Xray, ...).
+global:
+  # Single joinKey/masterKey pair shared automatically by every enabled
+  # product in this release (Artifactory <-> Xray Access federation) —
+  # replaces the old setup where devtools/artifactory's and devtools/xray's
+  # values.yaml each carried their own copy that had to be kept in sync by
+  # hand (see devtools-provision/CLAUDE.md's shared-role gotcha for what
+  # happens when two copies of the same secret drift). Real values set once
+  # in devtools-definition.
+  joinKey: ""
+  masterKey: ""
+
+  # Activates the artifactory/xray subcharts' built-in copy-custom-
+  # certificates init container, sourcing from the jfrog-platform-trusted-
+  # certs Secret rendered by templates/trusted-certs.yaml below — same
+  # mechanism and same reason (RHBK SSO OIDC PKIX trust) as every other
+  # devtool's trusted-certs.yaml, now wired once for both products via
+  # "global" instead of duplicated per product.
+  customCertificates:
+    enabled: true
+    certificateSecretName: jfrog-platform-trusted-certs
+
+  database:
+    host: ""
+    port: 5432
+    # The shared devtools-rds instance's parameter group has rds.force_ssl=1,
+    # so a non-SSL connection is rejected by pg_hba.conf — same reasoning as
+    # the old artifactory/xray values.yaml's sslmode=require db.url overrides.
+    sslMode: require
+    # This chart can auto-create each enabled product's database via a
+    # built-in init container (global.customInitContainersBegin's "initdb"
+    # template) — but that script always connects as a hardcoded PGUSERNAME
+    # of "postgres", which doesn't match this platform's actual RDS admin
+    # username (dynamic, from SSM). Left false;
+    # jfrog-platform.artifactory.customInitContainersBegin /
+    # jfrog-platform.xray.common.customInitContainersBegin below carry
+    # forward the same hand-rolled "CREATE DATABASE IF NOT EXISTS, connect
+    # as the real shared RDS admin user" init containers the two standalone
+    # devtools already used.
+    initDBCreation: false
+
+# Values for the vendored "jfrog-platform" dependency (charts/jfrog-platform)
+# — nested under its own name per standard Helm subchart convention.
+jfrog-platform:
+  # Shared platform-wide RabbitMQ (used when a product's own
+  # "<product>.rabbitmq.enabled" is left false, so it uses this one instead)
+  # — disabled here since Xray keeps its own bundled RabbitMQ (see
+  # xray.rabbitmq.enabled below), same as the old standalone xray chart.
+  # Nothing else in this release needs a broker, so this would otherwise be
+  # a second, unused RabbitMQ pod.
+  rabbitmq:
+    enabled: false
+
+  # Shared bundled Postgres, used only if global.database points nowhere
+  # else — disabled since every product below points at the shared RDS
+  # instance (see devtools-definition).
+  postgresql:
+    enabled: false
+
+  artifactory:
+    enabled: true
+    postgresql:
+      enabled: false
+
+    database:
+      # Referenced via secrets.user/password/url (not the plain `url`/`user`/
+      # `password` fields this chart defaults to): with unifiedSecretInstallation
+      # (chart default) and database.secrets.user/password both set, the
+      # chart's own unified-secret template skips rendering db-url from a
+      # plain `database.url` value entirely — the statefulset would then
+      # reference a key that doesn't exist. Setting secrets.url ourselves
+      # sidesteps that gap, same workaround the old devtools/artifactory/
+      # values.yaml used.
+      secrets:
+        user:
+          name: artifactory-db
+          key: username
+        password:
+          name: artifactory-db
+          key: password
+        url:
+          name: artifactory-db
+          key: url
+
+    nginx:
+      enabled: false
+    ingress:
+      enabled: true
+      className: nginx
+      hosts:
+        - artifactory.devopstashtiot.page
+      annotations:
+        nginx.ingress.kubernetes.io/ssl-redirect: "false"
+        nginx.ingress.kubernetes.io/proxy-body-size: "0"
+
+    artifactory:
+      replicaCount: 1
+
+      persistence:
+        # Binary blob storage backend — "file-system" keeps blobs on the
+        # local PVC below; set to "s3-storage-v3-direct" in
+        # devtools-definition to store blobs in S3 instead (etc/work/logs
+        # still live on this PVC either way — persistence.type only
+        # controls blob storage).
+        type: file-system
+        size: 20Gi
+        storageClassName: gp2
+        awsS3V3:
+          useInstanceCredentials: true
+          bucketName: ""
+          region: ""
+          path: "artifactory/filestore"
+
+      resources:
+        requests:
+          cpu: "500m"
+          memory: "2Gi"
+        limits:
+          cpu: "2"
+          memory: "2.5Gi"
+
+      javaOpts:
+        xms: "1g"
+        xmx: "2g"
+
+      admin:
+        secret: artifactory-admin
+        dataKey: password
+      # License wiring (secret/dataKey) is set in devtools-definition once a
+      # real license is available — left unset here, same as before.
+      license: {}
+
+    # Ensures the "artifactory" database exists on the shared RDS instance
+    # before Artifactory starts — set in devtools-definition. See
+    # global.database.initDBCreation above for why this chart's own
+    # built-in DB-creation hook isn't used instead.
+    customInitContainersBegin: ""
+
+  xray:
+    enabled: true
+    postgresql:
+      enabled: false
+    # Keep Xray's own bundled RabbitMQ instance (overrides this chart's own
+    # default of false, which would instead point Xray at the shared
+    # top-level `rabbitmq:` above — left disabled since nothing else needs
+    # it). Same behavior as the old standalone xray chart, which always
+    # used its own bundled broker.
+    rabbitmq:
+      enabled: true
+
+    database:
+      secrets:
+        user:
+          name: xray-db
+          key: username
+        password:
+          name: xray-db
+          key: password
+        url:
+          name: xray-db
+          key: url
+
+    common:
+      # Ensures the "xray" database exists on the shared RDS instance
+      # before Xray starts — set in devtools-definition, same script as
+      # before.
+      customInitContainersBegin: ""
+
+    analysis:
+      resources:
+        requests:
+          cpu: "100m"
+          memory: "250Mi"
+        limits:
+          memory: "2Gi"
+    indexer:
+      resources:
+        requests:
+          cpu: "300m"
+          memory: "550Mi"
+        limits:
+          memory: "2Gi"
+    persist:
+      resources:
+        requests:
+          cpu: "100m"
+          memory: "250Mi"
+        limits:
+          memory: "1Gi"
+    server:
+      resources:
+        requests:
+          cpu: "300m"
+          memory: "500Mi"
+        limits:
+          memory: "1Gi"
+    router:
+      resources:
+        requests:
+          cpu: "60m"
+          memory: "100Mi"
+        limits:
+          memory: "512Mi"
+
+# Values consumed only by this umbrella chart's own templates/ (not passed to
+# the jfrog-platform dependency) — kept under "wrapper" so they never
+# collide with the "jfrog-platform:" key above.
+wrapper:
+  artifactorySecrets:
+    license: ""
+    licenseSsmParameter: ""
+    admin:
+      username: "admin"
+    adminPasswordSsmParameter: ""
+    db:
+      url: ""
+
+  xraySecrets:
+    db:
+      url: ""
+
+  # RDS master credentials (SSM SecureString paths) — used only by the
+  # customInitContainersBegin hooks above (set in devtools-definition) that
+  # ensure each product's database exists on the shared RDS instance.
+  # Requires the external-secrets-operator devtool.
+  rdsAdmin:
+    usernameSsmParameter: ""
+    passwordSsmParameter: ""
+
+  # SSM Parameter Store path (SecureString) to Cloudflare's public Origin CA
+  # root cert — same platform-wide value used by every other devtool,
+  # published once by devtools-labs Terraform's devtools-secrets module.
+  # Set in devtools-definition.
+  trustedCertsSsmParameter: ""
+
+  # Renders every dashboards/*.json file (see templates/dashboards.yaml) as a
+  # Grafana-sidecar-discoverable ConfigMap — same mechanism as every other
+  # devtool. No dashboards/*.json committed yet — confirm the metrics
+  # endpoint actually returns data before adding one.
+  grafanaDashboard:
+    enabled: false

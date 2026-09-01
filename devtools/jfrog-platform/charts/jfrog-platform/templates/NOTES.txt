@@ -1,0 +1,74 @@
+Congratulations, you have just deployed JFrog Platform Chart with the following products:
+{{- if .Values.artifactory.enabled }} Artifactory{{- end }}{{- if .Values.xray.enabled }}, Xray {{- end }}{{- if .Values.distribution.enabled }}, Distribution{{- end }}{{- if ((.Values.workers).enabled) }}, Workers{{- end }}{{- if ((.Values.catalog).enabled) }}, Catalog{{- end }} 
+{{- if .Values.artifactory.enabled }}
+---------------------------------------------------------------------------------------------------------------------------------------------------
+Instructions for accessing the JFrog Platform
+---------------------------------------------------------------------------------------------------------------------------------------------------
+
+1. The JFrog Platform Chart is being deployed. This process may take up to 10 minutes, depending on your internet connection speed.
+   You can monitor the deployment status by running the following command:
+
+     $ kubectl get pods -w --namespace {{ .Release.Namespace }}
+
+2. Retrieve the JFrog Platform URL:
+
+   {{- if .Values.artifactory.ingress.enabled }}
+   {{- range .Values.artifactory.ingress.hosts }}
+     http://{{ . }}
+   {{- end }}
+
+   {{- else if contains "NodePort" .Values.artifactory.nginx.service.type }}
+   $ export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "call-nested" (list . "artifactory" "artifactory.nginx.fullname") }})
+   $ export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
+   $ echo http://$NODE_IP:$NODE_PORT/
+
+   {{- else if contains "LoadBalancer"  .Values.artifactory.nginx.service.type }}
+
+   - Method 1: LoadBalancer Connection (preferred)
+     It may take a few minutes for the LoadBalancer service to be available.
+     You can monitor the service status by running this command:
+
+     $ kubectl get svc --namespace {{ .Release.Namespace }} -w {{ include "call-nested" (list . "artifactory" "artifactory.nginx.fullname") }}
+
+     Extract the LoadBalancer IP / Hostname:
+
+     $ export SERVICE_HOSTNAME=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ include "call-nested" (list . "artifactory" "artifactory.nginx.fullname") }} --template "{{ "{{ range (index .status.loadBalancer.ingress 0) }}{{ . }}{{ end }}" }}")
+     $ echo http://$SERVICE_HOSTNAME/
+
+   - Method 2: Port Forwarding
+
+     $ kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ include "call-nested" (list . "artifactory" "artifactory.nginx.fullname") }} 8080:{{ .Values.artifactory.nginx.http.internalPort }} &
+     $ echo http://localhost:8080/
+
+   {{- else if contains "ClusterIP" .Values.artifactory.nginx.service.type }}
+   $ kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ include "call-nested" (list . "artifactory" "artifactory.nginx.fullname") }} 8080:{{ .Values.artifactory.nginx.http.internalPort }} &
+   $ echo http://localhost:8080/
+   {{- end }}
+
+
+3. Once you have the URL, open your preferred web browser and access the JFrog Platform.
+   Default credentials for Artifactory:
+   - Username: admin
+   - Password: password
+{{- end }}
+
+{{- if .Values.postgresql.enabled }}
+---------------------------------------------------------------------------------------------------------------------------------------------------
+***WARNING*** You are using the bundled PostgreSQL database from the chart. This bundled database is not suitable for production use cases.
+Use an external PostgreSQL database for production deployments.
+{{- if or (eq .Values.global.database.adminPassword "postgres") (eq .Values.postgresql.auth.postgresPassword "postgres") }}
+Currently, you are using the default password for postgresql user.
+It is recommended to change it by setting an explicit password with `postgresql.auth.postgresPassword` and `global.database.adminPassword`
+{{- end }}
+---------------------------------------------------------------------------------------------------------------------------------------------------
+{{- end }}
+
+
+{{- if and .Values.rabbitmq.enabled .Values.global.xray.rabbitmq.haQuorum.enabled }}
+  {{- if eq (int .Values.rabbitmq.replicaCount) 1 }}
+************************************* Please note *****************************************
+  'rabbitmq.replicaCount' is set to 1.                                                *
+  To achieve High Availability (HA) with quorum queues, it is recommended to set this to 3.
+***************************************************************************************
+  {{- end }}
+{{- end }}

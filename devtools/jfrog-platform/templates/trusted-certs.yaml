@@ -1,0 +1,32 @@
+# Cloudflare Origin CA root cert — trusted so Artifactory's and Xray's own
+# outbound TLS calls to *.devopstashtiot.page pass real certificate
+# verification. Needed for the RHBK/Keycloak OIDC SSO login flow
+# specifically: Artifactory's server-side token/userinfo exchange with
+# rhbk.devopstashtiot.page (after the browser redirect completes) was
+# failing with "javax.net.ssl.SSLHandshakeException: PKIX path building
+# failed" because ingress-nginx-controller presents a real Cloudflare Origin
+# Certificate signed by Cloudflare's own private Origin CA, which isn't in
+# any standard JVM trust store. Same cert/root cause as every other
+# devtool's trusted-certs.yaml. Sourced from SSM (published once by
+# devtools-labs Terraform's devtools-secrets module) rather than a PEM file
+# committed here. Wired in via this chart's global.customCertificates
+# mechanism (see values.yaml), which applies to every enabled product in
+# this release — one Secret now covers both Artifactory and Xray instead of
+# a copy per product.
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: jfrog-platform-trusted-certs
+  namespace: {{ .Release.Namespace }}
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: aws-parameter-store
+    kind: ClusterSecretStore
+  target:
+    name: jfrog-platform-trusted-certs
+    creationPolicy: Owner
+  data:
+    - secretKey: cloudflare-origin-ca-rsa-root.crt
+      remoteRef:
+        key: {{ .Values.wrapper.trustedCertsSsmParameter | quote }}
