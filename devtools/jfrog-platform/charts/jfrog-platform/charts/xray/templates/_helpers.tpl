@@ -21,17 +21,49 @@ The xray-sbom name
 {{- end -}}
 
 {{/*
-The xray-panoramic name
+The xray-jascontextual name
 */}}
-{{- define "xray-panoramic.name" -}}
-{{- default .Chart.Name .Values.panoramic.name .Values.nameOverride | trunc 63 | trimSuffix "-" -}}
+{{- define "xray-jascontextual.name" -}}
+{{- default .Chart.Name .Values.jascontextual.name .Values.nameOverride | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
+{{/*
+The xray-jasexposures name
+*/}}
+{{- define "xray-jasexposures.name" -}}
+{{- default .Chart.Name .Values.jasexposures.name .Values.nameOverride | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
+{{/*
+The xray-aiscanner name
+*/}}
+{{- define "xray-aiscanner.name" -}}
+{{- default .Chart.Name .Values.aiscanner.name .Values.nameOverride | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
+{{/*
+Create a default fully qualified app name.
+We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
+If release name contains chart name it will be used as a full name.
+*/}}
+{{- define "xray-aiscanner.fullname" -}}
+{{- if .Values.aiscanner.fullnameOverride -}}
+{{- .Values.aiscanner.fullnameOverride | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+{{- $name := default .Chart.Name .Values.aiscanner.name -}}
+{{- if contains $name .Release.Name -}}
+{{- .Release.Name | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+{{- end -}}
 {{- end -}}
 
 {{/*
 The xray-policyenforcer name
 */}}
 {{- define "xray-policyenforcer.name" -}}
-{{- default .Chart.Name .Values.panoramic.name .Values.nameOverride | trunc 63 | trimSuffix "-" -}}
+{{- default .Chart.Name .Values.policyenforcer.name .Values.nameOverride | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 
 {{/*
@@ -53,6 +85,20 @@ The xray-server name
 */}}
 {{- define "xray-server.name" -}}
 {{- default .Chart.Name .Values.server.name .Values.nameOverride | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
+{{/*
+The xray-curation name
+*/}}
+{{- define "xray-curation.name" -}}
+{{- default .Chart.Name .Values.curation.name .Values.nameOverride | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
+{{/*
+The xray-reporting name
+*/}}
+{{- define "xray-reporting.name" -}}
+{{- default .Chart.Name .Values.reporting.name .Values.nameOverride | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 
 {{/*
@@ -134,6 +180,42 @@ Create a default fully qualified app name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
 If release name contains chart name it will be used as a full name.
 */}}
+{{- define "xray-jascontextual.fullname" -}}
+{{- if .Values.jascontextual.fullnameOverride -}}
+{{- .Values.jascontextual.fullnameOverride | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+{{- $name := default .Chart.Name .Values.jascontextual.name -}}
+{{- if contains $name .Release.Name -}}
+{{- .Release.Name | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Create a default fully qualified app name.
+We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
+If release name contains chart name it will be used as a full name.
+*/}}
+{{- define "xray-jasexposures.fullname" -}}
+{{- if .Values.jasexposures.fullnameOverride -}}
+{{- .Values.jasexposures.fullnameOverride | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+{{- $name := default .Chart.Name .Values.jasexposures.name -}}
+{{- if contains $name .Release.Name -}}
+{{- .Release.Name | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Create a default fully qualified app name.
+We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
+If release name contains chart name it will be used as a full name.
+*/}}
 {{- define "xray-indexer.fullname" -}}
 {{- if .Values.indexer.fullnameOverride -}}
 {{- .Values.indexer.fullnameOverride | trunc 63 | trimSuffix "-" -}}
@@ -184,6 +266,42 @@ If release name contains chart name it will be used as a full name.
 {{- end -}}
 
 {{/*
+Create a default fully qualified app name.
+We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
+If release name contains chart name it will be used as a full name.
+*/}}
+{{- define "xray-curation.fullname" -}}
+{{- if .Values.curation.fullnameOverride -}}
+{{- .Values.curation.fullnameOverride | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+{{- $name := default .Chart.Name .Values.curation.name -}}
+{{- if contains $name .Release.Name -}}
+{{- .Release.Name | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Create a default fully qualified app name.
+We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
+If release name contains chart name it will be used as a full name.
+*/}}
+{{- define "xray-reporting.fullname" -}}
+{{- if .Values.reporting.fullnameOverride -}}
+{{- .Values.reporting.fullnameOverride | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+{{- $name := default .Chart.Name .Values.reporting.name -}}
+{{- if contains $name .Release.Name -}}
+{{- .Release.Name | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Create the name of the service account to use
 */}}
 {{- define "xray.serviceAccountName" -}}
@@ -194,6 +312,7 @@ Create the name of the service account to use
 {{- end -}}
 {{- end -}}
 
+{{/*
 Create the name of the service account to use for rabbitmq migration
 */}}
 {{- define "xray.rabbitmq.migration.serviceAccountName" -}}
@@ -449,7 +568,7 @@ Return the proper xray chart image names
 {{- $registryName := index $dot.Values $indexReference "image" "registry" -}}
 {{- $repositoryName := index $dot.Values $indexReference "image" "repository" -}}
 {{- $tag := default $dot.Chart.AppVersion (index $dot.Values $indexReference "image" "tag") | toString -}}
-{{- if and $dot.Values.common.xrayVersion (or (eq $indexReference "persist") (eq $indexReference "server") (eq $indexReference "analysis") (eq $indexReference "sbom") (eq $indexReference "indexer") (eq $indexReference "policyenforcer") (eq $indexReference "panoramic")) }}
+{{- if and $dot.Values.common.xrayVersion (or (eq $indexReference "persist") (eq $indexReference "curation") (eq $indexReference "server") (eq $indexReference "analysis") (eq $indexReference "sbom") (eq $indexReference "aiscanner") (eq $indexReference "indexer") (eq $indexReference "policyenforcer") (eq $indexReference "reporting") (eq $indexReference "jascontextual") (eq $indexReference "jasexposures")) }}
 {{- $tag = $dot.Values.common.xrayVersion | toString -}}
 {{- end -}}
 {{- if $dot.Values.global }}
@@ -459,7 +578,10 @@ Return the proper xray chart image names
     {{- if and $dot.Values.global.versions.initContainers (eq $indexReference "initContainers") }}
     {{- $tag = $dot.Values.global.versions.initContainers | toString -}}
     {{- end -}}
-    {{- if and $dot.Values.global.versions.xray (or (eq $indexReference "persist") (eq $indexReference "server") (eq $indexReference "analysis") (eq $indexReference "sbom") (eq $indexReference "indexer") (eq $indexReference "policyenforcer") (eq $indexReference "panoramic")) }}
+    {{- if and $dot.Values.global.versions.observability (eq $indexReference "observability") }}
+    {{- $tag = $dot.Values.global.versions.observability | toString -}}
+    {{- end -}}
+    {{- if and $dot.Values.global.versions.xray (or (eq $indexReference "persist") (eq $indexReference "curation") (eq $indexReference "server") (eq $indexReference "analysis") (eq $indexReference "sbom") (eq $indexReference "aiscanner") (eq $indexReference "indexer") (eq $indexReference "policyenforcer") (eq $indexReference "reporting") (eq $indexReference "jascontextual") (eq $indexReference "jasexposures")) }}
     {{- $tag = $dot.Values.global.versions.xray | toString -}}
     {{- end -}}
     {{- if $dot.Values.global.imageRegistry }}
@@ -470,6 +592,23 @@ Return the proper xray chart image names
 {{- else -}}
     {{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
 {{- end -}}
+{{- end -}}
+
+{{/*
+Return the proper JAS scanner image tag.
+*/}}
+{{- define "xray.getJasScannerImageTag" -}}
+{{- $dot := index . 0 -}}
+{{- $service := index . 1 -}}
+{{- $tag := default "" (index $dot.Values $service "image" "tag") | toString -}}
+{{- $xrayVersion := default $dot.Chart.AppVersion $dot.Values.common.xrayVersion | toString -}}
+{{- if and $dot.Values.global $dot.Values.global.versions.xray -}}
+    {{- $xrayVersion = $dot.Values.global.versions.xray | toString -}}
+{{- end -}}
+{{- if or (not $tag) (eq $tag "None") (eq $tag "none") -}}
+    {{- $tag = $xrayVersion -}}
+{{- end -}}
+{{- printf "%s" $tag -}}
 {{- end -}}
 
 {{/*
@@ -536,6 +675,14 @@ Resolve xray ipa requiredServiceTypes value
 {{- define "xray.router.ipa.requiredServiceTypes" -}}
 {{- $requiredTypes := "jfxana,jfxidx,jfxpst,jfxpe,jfob" -}}
 {{- $requiredTypes -}}
+{{- end -}}
+
+{{/*
+Resolve router topology enableUnhealthyOnServiceDown value
+*/}}
+{{- define "router.topology.local.enableUnhealthyOnServiceDown" -}}
+{{- $enableUnhealthyOnServiceDown := .Values.router.topology.local.enableUnhealthyOnServiceDown | default false | toString -}}
+{{- quote $enableUnhealthyOnServiceDown -}}
 {{- end -}}
 
 {{/*

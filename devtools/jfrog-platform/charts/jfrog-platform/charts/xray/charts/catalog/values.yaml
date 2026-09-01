@@ -53,6 +53,14 @@ image:
   ##
   pullSecrets: []
 
+## This will be used to enable the cache feature.
+## If you want to use the cache feature, you need to enable cache, set the password and set the connectionString.
+## The connectionString is the connection string for the cache database. Example: redis:/catalog-valkey-primary:6379
+cache:
+  enabled: false
+  connectionString: ""
+  password: ""
+
 ## certificates added to this secret will be copied to $JFROG_HOME/catalog/var/etc/security/keys/trusted directory
 customCertificates:
   enabled: false
@@ -84,6 +92,18 @@ startupProbe:
     failureThreshold: 30
     periodSeconds: 5
     timeoutSeconds: {{ .Values.probes.timeoutSeconds }}
+
+readinessProbe:
+  enabled: true
+  config: |
+    httpGet:
+      path: /api/v1/system/readiness
+      port: 8088
+    initialDelaySeconds: 30
+    failureThreshold: 3
+    periodSeconds: 10
+    timeoutSeconds: {{ .Values.probes.timeoutSeconds }}
+    successThreshold: 1
 
 database:
   type: "postgresql"
@@ -298,11 +318,14 @@ router:
   image:
     registry: releases-docker.jfrog.io
     repository: jfrog/router
-    tag: 7.165.2
+    tag: 7.729.7
     imagePullPolicy: IfNotPresent
   serviceRegistry:
     ## Service registry (Access) TLS verification skipped if enabled
     insecure: false
+  topology:
+    local:
+      enableUnhealthyOnServiceDown: false
   internalPort: 8082
   externalPort: 8082
   tlsEnabled: false
@@ -325,12 +348,14 @@ router:
   livenessProbe:
     enabled: true
     config: |
-      exec:
-        command:
-          - sh
-          - -c
-          - curl -s -k --fail --max-time {{ .Values.probes.timeoutSeconds }} {{ include "catalog.scheme" . }}://localhost:{{ .Values.router.internalPort }}/router/api/v1/system/liveness
-      initialDelaySeconds: {{ if semverCompare "<v1.20.0-0" .Capabilities.KubeVersion.Version }}30{{ else }}0{{ end }}
+      httpGet:
+        httpHeaders:
+          - name: X-Jfrog-Ignore-Unhealthy
+            value: "true"
+        path: /router/api/v1/system/liveness
+        port: {{ .Values.router.internalPort }}
+        scheme: {{ include "catalog.scheme" . | upper }}
+      initialDelaySeconds: {{ if semverCompare "<v1.20.0-0" .Capabilities.KubeVersion.Version }}90{{ else }}0{{ end }}
       periodSeconds: 10
       timeoutSeconds: {{ .Values.probes.timeoutSeconds }}
       failureThreshold: 5
@@ -338,28 +363,32 @@ router:
 
   readinessProbe:
     enabled: true
-    config: |
-      exec:
-        command:
-          - sh
-          - -c
-          - curl -s -k --fail --max-time {{ .Values.probes.timeoutSeconds }} {{ include "catalog.scheme" . }}://localhost:{{ .Values.router.internalPort }}/router/api/v1/system/readiness
-      initialDelaySeconds: {{ if semverCompare "<v1.20.0-0" .Capabilities.KubeVersion.Version }}30{{ else }}0{{ end }}
+    config: | 
+      httpGet:
+        httpHeaders:
+          - name: X-Jfrog-Ignore-Unhealthy
+            value: "true"
+        path: /router/api/v1/system/readiness
+        port: {{ .Values.router.internalPort }}
+        scheme: {{ include "catalog.scheme" . | upper}}
+      initialDelaySeconds: 30
       periodSeconds: 10
       timeoutSeconds: {{ .Values.probes.timeoutSeconds }}
-      failureThreshold: 5
+      failureThreshold: 3
       successThreshold: 1
 
   startupProbe:
     enabled: true
     config: |
-      exec:
-        command:
-          - sh
-          - -c
-          - curl -s -k --fail --max-time {{ .Values.probes.timeoutSeconds }} {{ include "catalog.scheme" . }}://localhost:{{ .Values.router.internalPort }}/router/api/v1/system/readiness
-      initialDelaySeconds: 10
-      failureThreshold: 90
+      httpGet:
+        httpHeaders:
+          - name: X-Jfrog-Ignore-Unhealthy
+            value: "true"
+        path: /router/api/v1/system/readiness
+        port: {{ .Values.router.internalPort }}
+        scheme: {{ include "catalog.scheme" . | upper }}
+      initialDelaySeconds: {{ if semverCompare "<v1.20.0-0" .Capabilities.KubeVersion.Version }}90{{ else }}0{{ end }}
+      failureThreshold: 30
       periodSeconds: 5
       timeoutSeconds: {{ .Values.probes.timeoutSeconds }}
 
@@ -486,8 +515,8 @@ initContainers:
   ##
   image:
     registry: releases-docker.jfrog.io
-    repository: ubi9/ubi-minimal
-    tag: 9.5.1742914212
+    repository: jfrog/echo-mini
+    tag: "20260708"
     ## Specify a imagePullPolicy
     ## Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'
     ## ref: https://kubernetes.io/docs/user-guide/images/#pre-pulling-images

@@ -1,6 +1,181 @@
 # JFrog Platform Chart Changelog (GA releases only)
 All changes to this chart will be documented in this file.
 
+## [11.6.0] - July 29, 2026
+* **BREAKING CHANGE — nginx TLS certificate (artifactory subchart `107.161.x` and later):** nginx no longer auto-generates its TLS certificate. On the JFrog Platform chart, configure it under the `artifactory.nginx.*` values.
+  * **Fresh install** (with `artifactory.nginx.https.enabled=true`, the default) fails unless one of these is set:
+    * `artifactory.nginx.tlsSecretName=<name>` — supply your own `kubernetes.io/tls` Secret (production, recommended).
+    * `artifactory.nginx.generateSelfSignedCert=true` — opt in to a chart-generated self-signed cert (dev/test only, not from a trusted CA).
+    * `artifactory.nginx.https.enabled=false` — HTTP only, TLS terminates elsewhere.
+  * **Upgrade:** any previously auto-generated Secret is discovered via `lookup`, reused, and annotated `helm.sh/resource-policy: keep`, so existing HTTPS installs keep working with no operator action. That Secret still holds a chart-generated key from earlier releases — **rotate it** by creating your own `kubernetes.io/tls` Secret and setting `artifactory.nginx.tlsSecretName` on the next upgrade.
+  * To generate your own `tls.crt` / `tls.key`, see [Establish TLS in Artifactory and the JFrog Platform › Generate Certificates](https://docs.jfrog.com/installation/docs/establish-tls-in-artifactory-and-jfrog-platform#generate-certs).
+* Added new dependency chart `wingman` which is disabled by default and set `wingman.enabled: true` to enable it.
+  See the [Wingman MCP documentation](https://docs.jfrog.com/installation/docs/mcp#/) for details.
+* Update dependency artifactory chart version to 107.161.15
+* Update dependency xray chart version to 3.150.17
+* Update dependency catalog chart version to 101.42.1
+* Update dependency distribution chart version to 102.52.2
+* Update dependency worker chart version to 101.216.0
+* Update dependency bridge chart version to 101.262.17
+* Update postgresql image version to `17.10-helm-20260716`
+
+## [11.5.13] - July 29, 2026
+* Update dependency xray chart version to 103.143.34
+
+## [11.5.12] - July 28, 2026
+* Update dependency artifactory chart version to 107.146.34
+
+## [11.5.11] - July 22, 2026
+* Update dependency artifactory chart version to 107.146.29
+
+## [11.5.10] - July 21, 2026
+* Update dependency artifactory chart version to 107.146.28
+* Update dependency xray chart version to 103.143.31
+* Update dependency catalog chart version to 101.42.1
+
+## [11.5.9] - July 16, 2026
+* Update dependency artifactory chart version to 107.146.27
+* Update dependency catalog chart version to 101.40.4
+
+## [11.5.8] - July 11, 2026
+* Update dependency artifactory chart version to 107.146.25
+* Update dependency distribution chart version to 102.52.2
+
+## [11.5.7] - July 6, 2026
+* Update rabbitmq.migration.image.tag to 1.35.6
+* Added rabbitmq `quorum_queue_non_voters` feature flag and increased `max_message_size` to 128 MB.
+
+## [11.5.6] - June 29, 2026
+* Update dependency artifactory chart version to 107.146.22
+
+## [11.5.5] - June 15, 2026
+* Update dependency artifactory chart version to 107.146.17
+* Update dependency xray chart version to 103.143.26
+* Update dependency distribution chart version to 102.40.5
+* Update dependency catalog chart version to 101.40.2
+
+## [11.5.4] - May 28, 2026
+* Update dependency catalog chart version to 101.39.1
+* Update dependency artifactory chart version to 107.146.15
+* Update dependency catalog chart version to 101.39.0
+* Update dependency artifactory chart version to 107.146.13
+* Update dependency xray chart version to 103.143.19
+
+## [11.5.3] - May 19, 2026
+* Update dependency artifactory chart version to 107.146.12
+* Update dependency xray chart version to 103.143.16
+* Update dependency catalog chart version to 101.38.2
+
+## [11.5.2] - May 13, 2026
+* Update dependency artifactory chart version to 107.146.10
+* Update dependency xray chart version to 103.143.12
+
+## [11.5.1] - April 29, 2026
+* Update dependency artifactory chart version to 107.146.8
+* Update dependency xray chart version to 103.143.6
+* Update dependency catalog chart version to 101.37.2
+  
+## [11.5.0] - April 17, 2026
+* Update dependency artifactory chart version to 107.146.7
+* Update dependency catalog chart version to 101.35.2
+* Update dependency distribution chart version to 102.38.0
+* **IMPORTANT**
+* Added new dependency chart `bridge` which is disabled by default and set `bridge.enabled: true` to enable it. More info [here](https://jfrog.com/help/r/jfrog-installation-setup-documentation/install-bridge-client-service)
+
+## [11.4.6] - April 06, 2026
+* Update dependency artifactory chart version to 107.133.17
+* Update dependency xray chart version to 103.137.27
+* Update dependency distribution chart version to 102.37.0
+* Update dependency worker chart version to 101.199.0
+* Update dependency catalog chart version to 101.35.0
+* Moved rabbitmq configuration from the Xray service level to the root level in sizing files, excluding the affinity section during processing.
+
+## [11.4.5] - March 20, 2026
+* Update dependency artifactory chart version to 107.133.15
+* Update dependency xray chart version to 103.137.26
+* Update dependency catalog chart version to 101.34.1
+
+## [11.4.4] - March 04, 2026
+* Update dependency artifactory chart version to 107.133.12
+* Update dependency xray chart version to 103.137.23
+* Update dependency catalog chart version to 101.32.6
+* Updated Xray pre-upgrade hooks to wait for quorum queue migration before upgrading to RabbitMQ 4.x
+* Upgrade rabbitmq image to 3.13.7-debian-12-r8
+
+## [11.4.3] - February 20, 2026
+* Update dependency artifactory chart version to 107.133.10
+* Update dependency xray chart version to 103.137.21
+* Update dependency catalog chart version to 101.32.2
+
+## [11.4.1] - February 03, 2026
+* Update dependency artifactory chart version to 107.133.6
+* Update dependency xray chart version to 103.137.15
+* Update dependency catalog chart version to 101.31.0
+
+## [11.4.0] - Jan 27, 2025
+* Update dependency artifactory chart version to 107.133.3
+* Update dependency xray chart version to 103.131.35
+* Update dependency distribution chart version to 102.36.2
+* Update dependency catalog chart version to 101.30.7
+* Update dependency worker chart version to 101.179.0
+
+## [11.3.7] - Jan 12, 2025
+* Added support for using catalog with valkey cache, For configuration details, please see [Xray with catalog and valkey enabled](https://github.com/jfrog/charts/tree/master/examples/jfrog-platform/xray-with-catalog-valkey-cache)
+* Update dependency catalog chart version to 101.30.4
+
+## [11.3.6] - January 02, 2026
+* Update dependency artifactory chart version to 107.125.10
+* Update dependency xray chart version to 103.131.31
+
+## [11.3.5] - December 19, 2025
+* Update dependency artifactory chart version to 107.125.9
+* Update dependency xray chart version to 103.131.27
+
+## [11.3.4] - December 12, 2025
+* Update dependency xray chart version to 103.131.25
+* Update dependency catalog chart version to 101.28.3
+* Added `openshift-values.yaml` file for openshift deployment, please refer [here](README.md#openshift-deployment)
+
+## [11.3.3] - December 05, 2025
+* Update dependency artifactory chart version to 107.125.8
+* Update dependency xray chart version to 103.131.23
+* Update dependency distribution chart version to 102.35.0
+* Update dependency catalog chart version to 101.27.1
+* Added support for pod split deployment in Xray chart version 3.124.x and above. When enabled, each Xray service runs in a separate container within dedicated pods. For configuration details, see [Xray with Pod Split](https://github.com/jfrog/charts/tree/master/examples/jfrog-platform/xray-with-pod-split)
+
+## [11.3.2] - November 19, 2025
+* Update dependency artifactory chart version to 107.125.7
+* Update dependency xray chart version to 103.131.20
+* Update dependency catalog chart version to 101.27.0
+
+## [11.3.1] - November 05, 2025
+* Update dependency artifactory chart version to 107.125.6
+* Update dependency xray chart version to 103.124.32
+* Update dependency catalog chart version to 101.26.8
+
+## [11.3.0] - November 03, 2025
+* **Important changes**
+* Set minimal Kubernetes version to 1.23.0
+* Upgrade postgres chart version to `16.7.26`
+* Upgrade postgres image to `17.6.0-debian-12-r2`
+* Update dependency artifactory chart version to 107.125.4
+* Update dependency catalog chart version to 101.26.6
+* Update dependency distribution chart version to 102.34.2
+
+## [11.2.5] - October 23, 2025
+* Update dependency artifactory chart version to 107.117.19
+* Update dependency xray chart version to 103.124.31
+* Update dependency catalog chart version to 101.26.5
+
+## [11.2.4] - October 08, 2025
+* Update dependency artifactory chart version to 107.117.18
+* Update dependency xray chart version to 103.124.28
+
+## [11.2.3] - September 25, 2025
+* Update dependency artifactory chart version to 107.117.17
+* Update dependency xray chart version to 103.124.26
+* Update dependency catalog chart version to 101.25.6
+
 ## [11.2.2] - September 02, 2025
 * Update dependency artifactory chart version to 107.117.15
 * Update dependency distribution chart version to 102.33.2

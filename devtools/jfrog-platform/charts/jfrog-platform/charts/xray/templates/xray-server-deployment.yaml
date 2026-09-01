@@ -17,7 +17,7 @@ metadata:
     unifiedUpgradeAllowed: {{ required "\n\n**************************************\nSTOP! UPGRADE from Xray 2.x (appVersion) currently not supported!\nIf this is an upgrade over an existing Xray 3.x, explicitly pass 'unifiedUpgradeAllowed=true' to upgrade.\n**************************************\n" .Values.unifiedUpgradeAllowed | quote }}
 {{- end }}
 {{- if and .Release.IsUpgrade .Values.postgresql.enabled }}
-    databaseUpgradeReady: {{ required "\n\n*********\nIMPORTANT: UPGRADE STOPPED to prevent data loss!\nReview CHANGELOG.md (https://github.com/jfrog/charts/blob/master/stable/xray/CHANGELOG.md), pass postgresql.image.tag '9.6.18-debian-10-r7' or '10.13.0-debian-10-r38' or '12.5.0-debian-10-r25' or 13.10.0-debian-11-r14 or 15.2.0-debian-11-r23 or 15.10.0-debian-12-r2 and databaseUpgradeReady=true if you are upgrading from chart version which has postgresql version 9.6.x or 10.13.x or 12.5.x or 13.x or 15.x" .Values.databaseUpgradeReady | quote }}
+    databaseUpgradeReady: {{ required "\n\n*********\nIMPORTANT: UPGRADE STOPPED to prevent data loss!\nReview CHANGELOG.md (https://github.com/jfrog/charts/blob/master/stable/xray/CHANGELOG.md), postgresql upgrades are not supported, please pass postgresql.image.tag to use the same postgresql image version as defined in your previous chart defaults before proceeding with the upgrade" .Values.databaseUpgradeReady | quote }}
 {{- end }}
 {{- with .Values.server.statefulset.annotations }}
   annotations:
@@ -55,22 +55,7 @@ spec:
       {{- else }}
         checksum/xray-unified-secret: {{ include (print $.Template.BasePath "/xray-unified-secret.yaml") . | sha256sum }}
       {{- end }}
-        {{- with .Values.analysis.annotations }}
-{{ toYaml . | indent 8 }}
-        {{- end }}
-        {{- with .Values.indexer.annotations }}
-{{ toYaml . | indent 8 }}
-        {{- end }}
-        {{- with .Values.persist.annotations }}
-{{ toYaml . | indent 8 }}
-        {{- end }}
         {{- with .Values.server.annotations }}
-{{ toYaml . | indent 8 }}
-        {{- end }}
-        {{- with .Values.router.annotations }}
-{{ toYaml . | indent 8 }}
-        {{- end }}
-        {{- with .Values.filebeat.annotations }}
 {{ toYaml . | indent 8 }}
         {{- end }}
       {{- with .Values.xray.annotations }}
@@ -276,7 +261,7 @@ spec:
           done
       {{- end }}
   {{- end }}
-  {{- if and .Values.global.xray.rabbitmq.haQuorum.enabled .Values.common.rabbitmq.waitForReplicasQuorumOnStartup }}
+  {{- if and .Values.global.xray.rabbitmq.haQuorum.enabled .Values.common.rabbitmq.waitForReplicasQuorumOnStartup (not .Values.global.xray.allowLimitedAvailabilityMode) }}
       - name: "wait-for-rabbitmq-replicas-quorum"
         image: {{ include "xray.getImageInfoByValue" (list . "initContainers") }}
         imagePullPolicy: {{ .Values.initContainers.image.pullPolicy }}
@@ -287,8 +272,7 @@ spec:
 {{ toYaml .Values.initContainers.resources | indent 10 }}
         command:
         - 'bash'
-        - '-c'
-        - -ecx
+        - -ec
         - |
           echo "Waiting for rabbitmq replicas quorum to be running"
           ready=false;
@@ -302,15 +286,15 @@ spec:
             additionalFlags="--insecure"
           fi
           rabbitMqManagementUrl=$(echo $JF_SHARED_RABBITMQ_URL | sed -e "s/amqp:/${managerSchema}:/" -e "s/amqps:/${managerSchema}:/" -e "s/:${amqpPort}/:${managerPort}/" -e "s/:${amqpTlsPort}/:${managerPort}/")
-          while ! $ready; do echo waiting;
+          while ! $ready; do echo "waiting for rabbitmq quorum...";
             # This would be better done with jq instead of grep -o
             # jq 'map(select ( .running == true )) | length')
             # but currently we do not have jq in the UBI-minimal base image approved by the installer team
             nodesNum=$(curl -s ${additionalFlags} -u${JF_SHARED_RABBITMQ_USERNAME}:${JF_SHARED_RABBITMQ_PASSWORD} ${rabbitMqManagementUrl}api/nodes | grep -o '"running"\s*:true' | wc -l | tr -d '[:space:]')
-            echo $nodesNum
+            echo "running nodes: $nodesNum"
             quorumSize=$(( $JF_SHARED_RABBITMQ_REPLICASCOUNT/2 + 1 ))
-            echo $quorumSize
-            if [[ "$nodesNum" -ge "$quorumSize" ]]; then ready=true; echo "rabbitmq ok"; fi; sleep 5; 
+            echo "quorum required: $quorumSize"
+            if [[ "$nodesNum" -ge "$quorumSize" ]]; then ready=true; echo "rabbitmq quorum ok"; fi; sleep 5;
           done
         env:
       {{- if eq (include "xray.rabbitmq.isManagementListenerTlsEnabled" .) "true" }}
@@ -388,8 +372,14 @@ spec:
 {{ toYaml . | indent 10 }}
         {{- end }}
         env:
+        - name: JF_SHARED_NODE_POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
         - name: JF_ROUTER_TOPOLOGY_LOCAL_REQUIREDSERVICETYPES
           value: {{ include "xray.router.server.requiredServiceTypes" . }}
+        - name: JF_ROUTER_TOPOLOGY_LOCAL_ENABLEUNHEALTHYONSERVICEDOWN
+          value: {{ include "router.topology.local.enableUnhealthyOnServiceDown" . }}
         {{- if .Values.router.extraEnvVars }}
         {{- tpl .Values.router.extraEnvVars . | nindent 8 }}
         {{- end }}
@@ -407,6 +397,10 @@ spec:
 {{- end }}
         resources:
 {{ toYaml .Values.router.resources | indent 10 }}
+{{- if .Values.router.startupProbe.enabled }}
+        startupProbe:
+{{ tpl .Values.router.startupProbe.config . | indent 10 }}
+{{- end }}
 {{- if .Values.router.livenessProbe.enabled }}
         livenessProbe:
 {{ tpl .Values.router.livenessProbe.config . | indent 10 }}
@@ -443,14 +437,18 @@ spec:
           mountPath: "{{ .Values.observability.persistence.mountPath }}"
         resources:
 {{ toYaml .Values.observability.resources | indent 10 }}
-      {{- if .Values.observability.startupProbe.enabled }}
+{{- if .Values.observability.startupProbe.enabled }}
         startupProbe:
 {{ tpl .Values.observability.startupProbe.config . | indent 10 }}
-      {{- end }}
-      {{- if .Values.observability.livenessProbe.enabled }}
+{{- end }}
+{{- if .Values.observability.readinessProbe.enabled }}
+        readinessProbe:
+{{ tpl .Values.observability.readinessProbe.config . | indent 10 }}
+{{- end }}
+{{- if .Values.observability.livenessProbe.enabled }}
         livenessProbe:
 {{ tpl .Values.observability.livenessProbe.config . | indent 10 }}
-      {{- end }}
+{{- end }}
       - name: {{ .Values.server.name }}
         image: {{ include "xray.getImageInfoByValue" (list . "server") }}
         imagePullPolicy: {{ .Values.imagePullPolicy }}
@@ -579,6 +577,10 @@ spec:
 {{- if .Values.server.startupProbe.enabled }}
         startupProbe:
 {{ tpl .Values.server.startupProbe.config . | indent 10 }}
+{{- end }}
+{{- if .Values.server.readinessProbe.enabled }}
+        readinessProbe:
+{{ tpl .Values.server.readinessProbe.config . | indent 10 }}
 {{- end }}
 {{- if .Values.server.livenessProbe.enabled }}
         livenessProbe:

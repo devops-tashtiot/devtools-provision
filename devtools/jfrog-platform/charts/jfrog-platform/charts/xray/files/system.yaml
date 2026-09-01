@@ -3,13 +3,10 @@ router:
   serviceRegistry:
     insecure: {{ .Values.router.serviceRegistry.insecure }}
 shared:
-{{- if .Values.xray.openMetrics.enabled }}
+  {{- if .Values.xray.metrics.enabled }}
   metrics:
     enabled: true
-  {{- if .Values.xray.openMetrics.filebeat.enabled }}
-    filebeat: {{ toYaml .Values.xray.openMetrics.filebeat | nindent 6 }}
   {{- end }}
-{{- end }}
   logging:
     {{- if .Values.logging.logToStdoutJson }}
     enableJsonConsoleLogAppenders: {{ .Values.logging.logToStdoutJson }}
@@ -49,6 +46,9 @@ shared:
     ha_quorum: true
     vhost: {{ .Values.global.xray.rabbitmq.haQuorum.vhost }}
     replicasCount: {{ .Values.rabbitmq.replicaCount }}
+  {{- if and .Values.rabbitmq.enabled .Values.global.xray.rabbitmq.producerConnectionBlockAware.enabled }}
+    producerConnectionBlockAware: true
+  {{- end }}
   {{- end }}
   {{- if .Values.xray.mongoUrl }}
   mongo:
@@ -56,13 +56,16 @@ shared:
     username: "{{ .Values.xray.mongoUsername }}"
     password: "{{ .Values.xray.mongoPassword }}"
   {{- end }}
-{{- if or .Values.server.mailServer .Values.server.indexAllBuilds .Values.global.xray.rabbitmq.migrateMessagesFromXrayDefaultVhost .Values.global.xray.rabbitmq.migrateMessagesFromOtherRabbitMq }}
+{{- if or .Values.server.mailServer .Values.server.indexAllBuilds .Values.server.blockDownloadOnRemoteReposDeprecated .Values.global.xray.rabbitmq.migrateMessagesFromXrayDefaultVhost .Values.global.xray.rabbitmq.migrateMessagesFromOtherRabbitMq }}
 server:
   {{- if .Values.server.mailServer }}
   mailServer: "{{ .Values.server.mailServer }}"
   {{- end }}
   {{- if .Values.server.indexAllBuilds }}
   indexAllBuilds: {{ .Values.server.indexAllBuilds }}
+  {{- end }}
+  {{- if .Values.server.blockDownloadOnRemoteReposDeprecated }}
+  blockDownloadOnRemoteReposDeprecated: {{ .Values.server.blockDownloadOnRemoteReposDeprecated }}
   {{- end }}
   {{- if .Values.global.xray.rabbitmq.migrateMessagesFromXrayDefaultVhost }}
   dataMigrations:
@@ -73,20 +76,55 @@ server:
     migrate_msgs_from_other_rabbitmq: {{ toYaml .Values.global.xray.rabbitmq.migrateMessagesFromOtherRabbitMq | nindent 6 }}
   {{- end }}
 {{- end }}
-{{- if (include "xray.imagePullSecretsStrList" .) }}
+{{- if or .Values.jas.executionService.affinityLabelKey .Values.jas.executionService.affinityLabelValue .Values.jas.executionService.nodeAffinityKey .Values.jas.executionService.cpuLimit .Values.jas.executionService.memLimit .Values.jas.executionService.cpuRequest .Values.jas.executionService.memRequest (include "xray.imagePullSecretsStrList" .) }}
 executionService:
+  {{- if .Values.jas.executionService.affinityLabelKey }}
+  affinityLabelKey: {{ .Values.jas.executionService.affinityLabelKey | quote }}
+  {{- end }}
+  {{- if .Values.jas.executionService.affinityLabelValue }}
+  affinityLabelValue: {{ .Values.jas.executionService.affinityLabelValue | quote }}
+  {{- end }}
+  {{- if .Values.jas.executionService.nodeAffinityKey }}
+  nodeAffinityKey: {{ .Values.jas.executionService.nodeAffinityKey | quote }}
+  {{- end }}
+  {{- if .Values.jas.executionService.cpuLimit }}
+  cpuLimit: {{ .Values.jas.executionService.cpuLimit }}
+  {{- end }}
+  {{- if .Values.jas.executionService.memLimit }}
+  memLimit: {{ .Values.jas.executionService.memLimit | quote }}
+  {{- end }}
+  {{- if .Values.jas.executionService.cpuRequest }}
+  cpuRequest: {{ .Values.jas.executionService.cpuRequest }}
+  {{- end }}
+  {{- if .Values.jas.executionService.memRequest }}
+  memRequest: {{ .Values.jas.executionService.memRequest | quote }}
+  {{- end }}
+  {{- if (include "xray.imagePullSecretsStrList" .) }}
   pullSecret:
   {{- include "xray.imagePullSecretsStrList" . | indent 4 }}
+  {{- end }}
 {{- end }}
 contextualAnalysis:
   registry: {{ include "xray.getRegistryByService" (list . "contextualAnalysis") }}
   image: {{ .Values.contextualAnalysis.image.repository }}
+  tag: {{ include "xray.getJasScannerImageTag" (list . "contextualAnalysis") }}
 exposures:
   container:
     registry: {{ include "xray.getRegistryByService" (list . "exposures") }}
     image: {{ .Values.exposures.image.repository }}
-{{- if .Values.jas.healthcheck.enabled }}
+    tag: {{ include "xray.getJasScannerImageTag" (list . "exposures") }}
+{{- if or .Values.jas.healthcheck.enabled (and .Values.splitXraytoSeparateDeployments.fullSplit .Values.jas.separate.service.enabled) }}
 jas:
+  {{- if .Values.jas.healthcheck.enabled }}
   healthCheckApi:
     enabled: true
+  {{- end }}
+  {{- if and .Values.splitXraytoSeparateDeployments.fullSplit .Values.jas.separate.service.enabled }}
+  separate:
+    service:
+      enabled: true
+      {{- if .Values.jas.separate.service.extractionDir }}
+      extractionDir: {{ .Values.jas.separate.service.extractionDir | quote }}
+      {{- end }}
+  {{- end }}
 {{- end }}

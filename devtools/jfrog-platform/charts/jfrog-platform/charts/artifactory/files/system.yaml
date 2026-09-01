@@ -88,6 +88,11 @@ artifactory:
   tomcat:
     maintenanceConnector:
       port: {{ .Values.artifactory.tomcat.maintenanceConnector.port }}
+      {{- if and .Values.artifactory.livenessProbe.config (contains "httpGet" .Values.artifactory.livenessProbe.config) }}
+      host: "0.0.0.0"
+      {{- else if .Values.artifactory.tomcat.maintenanceConnector.host }}
+      host: {{ .Values.artifactory.tomcat.maintenanceConnector.host | quote }}
+      {{- end }}
     connector:
       maxThreads: {{ .Values.artifactory.tomcat.connector.maxThreads }}
       sendReasonPhrase: {{ .Values.artifactory.tomcat.connector.sendReasonPhrase }}
@@ -95,6 +100,10 @@ artifactory:
 frontend:
   session:
     timeMinutes: {{ .Values.frontend.session.timeoutMinutes | quote }}
+{{- if .Values.ml.enabled }}
+  ml:
+    jfrogMlAppState: VISIBLE
+{{- end }}
 access:
   database:
     maxOpenConnections: {{ .Values.access.database.maxOpenConnections }}
@@ -136,6 +145,10 @@ metadata:
 {{- if and .Values.jfconnect.enabled  (not (regexMatch "^.*(oss|cpp-ce|jcr).*$" .Values.artifactory.image.repository)) }}
 jfconnect:
   enabled: true
+{{- if .Values.jfconnect.airgap.enabled }}
+  airgap:
+      enabled: {{ .Values.jfconnect.airgap.enabled }}
+{{- end }}
 {{- else }}
 jfconnect:
   enabled: false
@@ -166,13 +179,18 @@ jfconfig:
 {{- end }}
 onemodel:
   enabled: {{ .Values.onemodel.enabled }}
-  {{- if .Values.onemodel.apolloYaml }}
-  apolloYaml:
-{{ toYaml .Values.onemodel.apolloYaml | nindent 6 }}
+  {{- if .Values.onemodel.cosmo }}
+  cosmo:
+  {{ toYaml .Values.onemodel.cosmo | nindent 6 }}
   {{- end}}
 {{- if and .Values.rtfs.enabled (not (regexMatch "^.*(oss|cpp-ce|jcr).*$" .Values.artifactory.image.repository)) }}
 rtfs:
   enabled: true
+  {{- if eq (default "" .Values.rtfs.database.type) "postgresql" }}
+  database:
+    type: {{ .Values.rtfs.database.type }}
+    driver: {{ .Values.rtfs.database.driver }}
+  {{- end }}
 {{- else }}
 rtfs:
   enabled: false
@@ -206,5 +224,26 @@ evidence:
   enabled: true
 {{- else }}
 evidence:
+  enabled: false
+{{- end }}
+{{- if .Values.jfbus.enabled }}
+jfbus:
+  enabled: true
+{{- else }}
+jfbus:
+  enabled: false
+{{- end }}
+{{- if eq (include "artifactory.jfmelt.enabled" .) "true" }}
+jfmelt:
+  enabled: true
+{{- else }}
+jfmelt:
+  enabled: false
+{{- end }}
+{{- if and .Values.platformfederation.enabled (not (regexMatch "^.*(oss|cpp-ce|jcr).*$" .Values.artifactory.image.repository)) }}
+platformFederation:
+  enabled: true
+{{- else }}
+platformFederation:
   enabled: false
 {{- end }}

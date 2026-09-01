@@ -38,7 +38,7 @@ global:
       # adminPassword:
       #   name: "jp-database-creds"
       #   key: "db-admin-password"
-    initContainerSetupDBImage: "{{ .Values.global.imageRegistry }}/postgres:16.6-alpine"
+    initContainerSetupDBImage: "{{ .Values.global.imageRegistry }}/echohq/postgres:17.10-helm-20260716"
     # Run the postgres init container as a non-default uid
     initContainerSetupDBUser:
     initContainerImagePullPolicy: IfNotPresent
@@ -81,15 +81,17 @@ global:
         enabled: false
         waitForPreviousPodsOnInitialStartup: true
         vhost: xray_haq
-
+  ## Applies to Catalog Chart
+  valkey:
+    password: "password"
 
 ## This Postgresql is used by all products , set postgresql.enabled: false, when you want to use external postgresql for all products
 postgresql:
   enabled: true
   enablePostgresUser: true
   image:
-    repository: bitnami/postgresql
-    tag: 16.6.0-debian-12-r2
+    repository: echohq/postgres
+    tag: 17.10-helm-20260716
   auth:
     postgresPassword: "postgres"
   primary:
@@ -150,7 +152,7 @@ rabbitmq:
   replicaCount: 1
   image:
     repository: bitnami/rabbitmq
-    tag: 3.13.7-debian-12-r6
+    tag: 3.13.7-debian-12-r8
   extraPlugins: "rabbitmq_management"
   auth:
   ## Enable encryption to rabbitmq
@@ -184,7 +186,7 @@ rabbitmq:
     # existingPasswordSecret: <name-of-existing-secret>
   ## To support upgrade from 3.8.x to 3.11.x , featureFlags are needed
   ## ref: https://blog.rabbitmq.com/posts/2022/07/required-feature-flags-in-rabbitmq-3.11/
-  featureFlags: drop_unroutable_metric,empty_basic_get_metric,implicit_default_bindings,maintenance_mode_status,quorum_queue,stream_queue,user_limits,virtual_host_metadata
+  featureFlags: drop_unroutable_metric,empty_basic_get_metric,implicit_default_bindings,maintenance_mode_status,quorum_queue,stream_queue,user_limits,virtual_host_metadata,quorum_queue_non_voters
   maxAvailableSchedulers: null
   onlineSchedulers: null
   persistence:
@@ -220,8 +222,8 @@ rabbitmq:
       enabled: false
     image:
       registry: "{{ .Values.global.imageRegistry }}"
-      repository: bitnami/kubectl
-      tag: 1.31.2
+      repository: echohq/kubectl
+      tag: 1.35.6
       pullPolicy: IfNotPresent
     resources:
       requests:
@@ -260,17 +262,30 @@ rabbitmq:
                 - get
                 - list
                 - delete
+                - watch
 
   extraConfiguration: |-
     management.listener.ssl = {{ .Values.global.rabbitmq.auth.tls.enabled }}
+    max_message_size = 134217728
 
   initContainers: |
     {{ template "waitForPreviousPods" . }}
+  networkPolicy:
+    enabled: true
+    extraIngress: |
+      - ports:
+          - port: 35672
+            endPort: 35682
+            protocol: TCP
+        from:
+          - namespaceSelector:
+              matchLabels:
+                kubernetes.io/metadata.name: {{ .Release.Namespace }}
 
 artifactory:
   enabled: true
   unifiedUpgradeAllowed: true
-  installerInfo: '{"productId":"Helm_JFrogPlatform/{{ printf "11.2.2-%s" .Chart.AppVersion  }}","features":[{"featureId":"Platform/{{ printf "%s-%s" "kubernetes" .Capabilities.KubeVersion.Version }}"},{"featureId":"Database/{{ .Values.database.type }}"},{"featureId":"Nginx_Enabled/{{ .Values.nginx.enabled }}"},{"featureId":"ArtifactoryPersistence_Type/{{ .Values.artifactory.persistence.type }}"},{"featureId":"SplitServicesToContainers_Enabled/{{ .Values.splitServicesToContainers }}"},{"featureId":"Filebeat_Enabled/{{ .Values.filebeat.enabled }}"},{"featureId":"ReplicaCount/{{ .Values.artifactory.replicaCount }}"}]}'
+  installerInfo: '{"productId":"Helm_JFrogPlatform/{{ printf "11.6.0-%s" .Chart.AppVersion  }}","features":[{"featureId":"Platform/{{ printf "%s-%s" "kubernetes" .Capabilities.KubeVersion.Version }}"},{"featureId":"Database/{{ .Values.database.type }}"},{"featureId":"Nginx_Enabled/{{ .Values.nginx.enabled }}"},{"featureId":"ArtifactoryPersistence_Type/{{ .Values.artifactory.persistence.type }}"},{"featureId":"SplitServicesToContainers_Enabled/{{ .Values.splitServicesToContainers }}"},{"featureId":"Filebeat_Enabled/{{ .Values.filebeat.enabled }}"},{"featureId":"ReplicaCount/{{ .Values.artifactory.replicaCount }}"}]}'
   postgresql:
     enabled: false
   waitForDatabase: false
@@ -300,8 +315,41 @@ artifactory:
     #   secret:
     #   dataKey:
 
+  nginx:
+    ## TLS Secret for nginx HTTPS.
+    ## Preferred on fresh install when nginx.https.enabled=true (the default).
+    ## Create the secret out-of-band and set its name here:
+    ##   kubectl create secret tls <name> --cert=tls.crt --key=tls.key -n <namespace>
+    ##
+    ## If neither this field nor nginx.generateSelfSignedCert is set on a fresh
+    ## install with HTTPS enabled, the install fails with a clear error message.
+    ## To install with HTTP only, also set:  --set nginx.https.enabled=false
+    ##
+    ## On upgrade this field is not enforced: if a pre-existing certificate Secret
+    ## from an earlier release is present in the namespace, it is reused so HTTPS
+    ## keeps working. In that case (or when explicitly set) HTTPS remains enabled.
+    tlsSecretName: ""
+
+    ## Generate a self-signed TLS certificate for nginx HTTPS. Opt-in, default off.
+    ## DEV/TEST ONLY. The generated private key is created inside the cluster and
+    ## is not issued by a trusted CA. In production, provide a real certificate
+    ## via nginx.tlsSecretName instead.
+    ## Ignored when nginx.tlsSecretName is set or nginx.https.enabled is false.
+    generateSelfSignedCert: false
+
 xray:
   enabled: true
+  ## Enables Valkey caching for JFrog Catalog to improve performance (to be used with catalog.enabled: true and catalog.cache.enabled: true)
+  valkey:
+    enabled: false
+  splitXraytoSeparateDeployments:
+  ## Deploy each Xray service as a separate, dedicated deployment
+  ## Enabling this setting will divide the Xray pod into multiple deployments: ( xray-server, xray-indexer, xray-persist, xray-analysis, xray-policyenforcer, xray-sbom )
+  ## By default, autoscaling is disabled for Xray services. To enable autoscaling, set the xray.<service>.autoscaling.enabled values to true per service.
+  ## For detailed instructions please visit https://github.com/jfrog/charts/tree/master/examples/jfrog-platform/xray-with-pod-split.
+    fullSplit: false
+  ## To prevent downtime, both the statefulset pod and deployment pods are kept together initially controlled by the `splitXraytoSeparateDeployments.gradualUpgrade` flag.
+    gradualUpgrade: false
   unifiedUpgradeAllowed: true
   xray:
     unifiedSecretInstallation: true
@@ -350,6 +398,9 @@ catalog:
     url: '{{ include "database.url" . }}'
     user: catalog
     password: catalog
+  cache:
+    enabled: false
+    connectionString: "redis://{{ .Release.Name }}-valkey-primary:6379"
 
 distribution:
   enabled: false
@@ -365,6 +416,32 @@ distribution:
 
 worker:
   enabled: false
+
+bridge:
+  enabled: false
+
+wingman:
+  enabled: false
+  ## Wingman (JFrog MCP Server) currently ships as a beta feature on the
+  ## self-hosted (SH) install path. By setting `consentToJfrogOnlineBetaAgreement`
+  ## to `true` you confirm that you have read and accepted the JFrog Online Beta
+  ## Agreement, which governs use of Wingman in beta.
+  ## JFrog Online Beta Agreement: https://docs.jfrog.com/installation/docs/mcp-server-beta-agreement
+  ##
+  ## NOTE — on the jfrog-platform (umbrella) chart, wingman is a subchart, so on
+  ## the CLI this flag MUST be nested under `wingman.`:
+  ##   --set wingman.enabled=true --set wingman.consentToJfrogOnlineBetaAgreement=true
+  ## In a values.yaml overrides file the flag stays under the `wingman:` block
+  ## exactly as shown below. The value must be the YAML boolean `true` — the
+  ## strings "true" / "false" and numbers 1 / 0 will NOT be accepted.
+  consentToJfrogOnlineBetaAgreement: false
+  postgresql:
+    enabled: false
+  database:
+    url: '{{ include "database.url" . }}'
+    user: wingman
+    password: wingman
+    secrets: {}
 
 preUpgradeHook:
   ## This is required to be performed to check if existing products like distribution already exists

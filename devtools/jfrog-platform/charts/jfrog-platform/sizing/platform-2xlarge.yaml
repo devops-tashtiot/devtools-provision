@@ -26,8 +26,6 @@ artifactory:
     extraEnvironmentVariables:
       - name: MALLOC_ARENA_MAX
         value: "16"
-      - name: SKIP_WAIT_FOR_EXTERNAL_DB
-        value: "true"
   
     javaOpts:
       other: >
@@ -70,8 +68,6 @@ artifactory:
     extraEnvironmentVariables:
       - name: MALLOC_ARENA_MAX
         value: "16"
-      - name: SKIP_WAIT_FOR_EXTERNAL_DB
-        value: "true"
   
   router:
     resources:
@@ -86,10 +82,10 @@ artifactory:
     resources:
       requests:
         cpu: "1"
-        memory: 500Mi
+        memory: 1Gi
       limits:
         # cpu: "5"
-        memory: 1Gi
+        memory: 2Gi
   
   metadata:
     database:
@@ -135,7 +131,7 @@ artifactory:
         cpu: 100m
         memory: 100Mi
       limits:
-        memory: 150Mi
+        memory: 1500Mi
     extraEnvironmentVariables:
       - name: MALLOC_ARENA_MAX
         value: "8"      
@@ -211,6 +207,60 @@ artifactory:
       limits:
         # cpu: "2"
         memory: 3500Mi
+  
+  jfbus:
+    resources:
+      requests:
+        cpu: 500m
+        memory: 3500Mi
+      limits:
+        # cpu: "2"
+        memory: 3500Mi
+  
+  jfmelt:
+    resources:
+      requests:
+        cpu: 500m
+        memory: 500Mi
+      limits:
+        # cpu: "2"
+        memory: 1Gi
+  
+  platformfederation:
+    resources:
+      requests:
+        cpu: 225m
+        memory: 180Mi
+      limits:
+        # cpu: "1"
+        memory: 2Gi
+  
+  apptrust:
+    resources:
+      requests:
+        cpu: 2
+        memory: 1Gi
+      limits:
+        # cpu: "5"
+        memory: 2.5Gi
+  
+  unifiedpolicy:
+    resources:
+      requests:
+        cpu: 2
+        memory: 1Gi
+      limits:
+        # cpu: "5"
+        memory: 2.5Gi
+  
+  evaluation:
+    resources:
+      requests:
+        cpu: 2
+        memory: 1Gi
+      limits:
+        # cpu: "5"
+        memory: 2.5Gi
 xray:
   ##############################################################
   # The 2xlarge sizing
@@ -289,15 +339,6 @@ xray:
         # cpu: "1"
         memory: 250Mi
   
-  panoramic:
-    resources:
-      requests:
-        cpu: "100m"
-        memory: 250Mi
-      limits:
-        # cpu: "4"
-        memory: 8Gi
-  
   sbom:
     resources:
       requests:
@@ -346,29 +387,20 @@ xray:
                       - xray
               topologyKey: kubernetes.io/hostname
   
-  rabbitmq:
-    extraConfiguration: |-
-      vm_memory_high_watermark.absolute = 6G
-      {{- if not .Values.global.xray.rabbitmq.haQuorum.enabled }}
-      raft.wal_max_size_bytes = 1048576
-      {{- end }}
-    resources:
-      requests:
-        cpu: "500m"
-        memory: 1Gi
-      limits:
-        # cpu: "8"
-        memory: 7Gi
-    affinity:
-      podAntiAffinity:
-        requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchExpressions:
-                - key: app
-                  operator: In
-                  values:
-                    - xray
-            topologyKey: kubernetes.io/hostname
+rabbitmq:
+  extraConfiguration: |-
+    vm_memory_high_watermark.absolute = 6G
+    {{- if not .Values.global.xray.rabbitmq.haQuorum.enabled }}
+    raft.wal_max_size_bytes = 1048576
+    {{- end }}
+  resources:
+    requests:
+      cpu: "500m"
+      memory: 1Gi
+    limits:
+      # cpu: "8"
+      memory: 7Gi
+
 distribution:
   ##############################################################
   # The 2xlarge sizing
@@ -419,15 +451,6 @@ distribution:
       limits:
         # cpu: "1"
         memory: 250Mi
-  
-  redis:
-    resources:
-      requests:
-        cpu: 50m
-        memory: 100Mi
-      limits:
-        # cpu: "1"
-        memory: 1Gi
   
   postgresql:
     primary:

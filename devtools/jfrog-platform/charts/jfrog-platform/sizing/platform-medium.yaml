@@ -47,8 +47,6 @@ artifactory:
     extraEnvironmentVariables:
       - name: MALLOC_ARENA_MAX
         value: "2"
-      - name: SKIP_WAIT_FOR_EXTERNAL_DB
-        value: "true"
   
   access:
     tomcat:
@@ -70,8 +68,6 @@ artifactory:
     extraEnvironmentVariables:
       - name: MALLOC_ARENA_MAX
         value: "2"
-      - name: SKIP_WAIT_FOR_EXTERNAL_DB
-        value: "true"
         
   router:
     resources:
@@ -86,10 +82,10 @@ artifactory:
     resources:
       requests:
         cpu: 100m
-        memory: 150Mi
+        memory: 500Mi
       limits:
         # cpu: "2"
-        memory: 250Mi
+        memory: 1Gi
   
   metadata:
     database:
@@ -211,6 +207,60 @@ artifactory:
       limits:
         # cpu: "2"
         memory: 3500Mi
+  
+  jfbus:
+    resources:
+      requests:
+        cpu: 500m
+        memory: 3500Mi
+      limits:
+        # cpu: "2"
+        memory: 3500Mi
+  
+  jfmelt:
+    resources:
+      requests:
+        cpu: 500m
+        memory: 500Mi
+      limits:
+        # cpu: "2"
+        memory: 1Gi
+  
+  platformfederation:
+    resources:
+      requests:
+        cpu: 150m
+        memory: 150Mi
+      limits:
+        # cpu: "2"
+        memory: 1Gi
+  
+  apptrust:
+    resources:
+      requests:
+        cpu: 500m
+        memory: 500Mi
+      limits:
+        # cpu: "2"
+        memory: 1Gi
+  
+  unifiedpolicy:
+    resources:
+      requests:
+        cpu: 500m
+        memory: 500Mi
+      limits:
+        # cpu: "2"
+        memory: 1Gi
+  
+  evaluation:
+    resources:
+      requests:
+        cpu: 500m
+        memory: 500Mi
+      limits:
+        # cpu: "2"
+        memory: 1Gi
 xray:
   ##############################################################
   # The medium sizing
@@ -289,15 +339,6 @@ xray:
         # cpu: "1"
         memory: 250Mi
   
-  panoramic:
-    resources:
-      requests:
-        cpu: "100m"
-        memory: 250Mi
-      limits:
-        # cpu: "4"
-        memory: 8Gi
-  
   sbom:
     resources:
       requests:
@@ -346,29 +387,20 @@ xray:
                       - xray
               topologyKey: kubernetes.io/hostname
   
-  rabbitmq:
-    extraConfiguration: |-
-      vm_memory_high_watermark.absolute = 3G
-      {{- if not .Values.global.xray.rabbitmq.haQuorum.enabled }}
-      raft.wal_max_size_bytes = 1048576
-      {{- end }}
-    resources:
-      requests:
-        cpu: "100m"
-        memory: 500Mi
-      limits:
-        # cpu: "2"
-        memory: 4Gi
-    affinity:
-      podAntiAffinity:
-        requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchExpressions:
-                - key: app
-                  operator: In
-                  values:
-                    - xray
-            topologyKey: kubernetes.io/hostname
+rabbitmq:
+  extraConfiguration: |-
+    vm_memory_high_watermark.absolute = 3G
+    {{- if not .Values.global.xray.rabbitmq.haQuorum.enabled }}
+    raft.wal_max_size_bytes = 1048576
+    {{- end }}
+  resources:
+    requests:
+      cpu: "100m"
+      memory: 500Mi
+    limits:
+      # cpu: "2"
+      memory: 4Gi
+
 distribution:
   ##############################################################
   # The medium sizing
@@ -419,15 +451,6 @@ distribution:
       limits:
         # cpu: "1"
         memory: 50Mi
-  
-  redis:
-    resources:
-      requests:
-        cpu: 30m
-        memory: 50Mi
-      limits:
-        # cpu: "1"
-        memory: 150Mi
   
   postgresql:
     primary:

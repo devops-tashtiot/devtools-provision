@@ -91,9 +91,6 @@ spec:
         - '/bin/bash'
         - '-c'
         - |
-            if [[ -e "{{ .Values.distribution.persistence.mountPath }}/etc/filebeat.yaml" ]]; then
-                chmod 644 {{ .Values.distribution.persistence.mountPath }}/etc/filebeat.yaml
-            fi
             echo "Copy system.yaml to {{ .Values.distribution.persistence.mountPath }}/etc"
             mkdir -p {{ .Values.distribution.persistence.mountPath }}/etc
             {{- if .Values.systemYamlOverride.existingSecret }}
@@ -241,6 +238,9 @@ spec:
       hostAliases:
 {{ toYaml .Values.hostAliases | indent 6 }}
       {{- end }}
+      {{- if .Values.filebeat.terminationGracePeriod }}
+      terminationGracePeriodSeconds: {{ .Values.filebeat.terminationGracePeriod }}
+      {{- end }}
       containers:
       - name: {{ .Values.distribution.name }}
         image: {{ include "distribution.getImageInfoByValue" (list $ "distribution") }}
@@ -320,19 +320,6 @@ spec:
               key: db-url
         {{- end }}
       {{- end }}
-        - name: JF_SHARED_REDIS_PASSWORD
-          valueFrom:
-            secretKeyRef:
-            {{- if .Values.redis.existingSecret }}
-              name: {{ .Values.redis.existingSecret }}
-            {{- else if not .Values.distribution.unifiedSecretInstallation }}
-              name: {{ include "distribution.fullname" . }}
-            {{- else }}
-              name: {{ template "distribution.unifiedSecretPrependReleaseName" . }}-unified-secret
-            {{- end }}
-              key: redis-password
-        - name: JF_SHARED_REDIS_CONNECTIONSTRING
-          value: '{{ printf "redis://localhost:%g"  .Values.redis.port }}'
 {{- with .Values.distribution.extraEnvironmentVariables }}
 {{ tpl (toYaml .) $ | indent 8 }}
 {{- end }}
@@ -375,6 +362,10 @@ spec:
 {{ toYaml . | indent 10 }}
         {{- end }}
         env:
+        - name: JF_SHARED_NODE_POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
         - name: JF_ROUTER_TOPOLOGY_LOCAL_REQUIREDSERVICETYPES
           value: {{ include "distribution.router.requiredServiceTypes" . }}
         ports:
@@ -435,52 +426,6 @@ spec:
         livenessProbe:
 {{ tpl .Values.observability.livenessProbe.config . | indent 10 }}
       {{- end }}
-      - name: redis
-        image: {{ include "distribution.getImageInfoByValue" (list $ "redis") }}
-        imagePullPolicy: {{ .Values.redis.image.pullPolicy }}
-        {{- if .Values.redis.containerSecurityContext.enabled }}
-        securityContext: {{- omit .Values.redis.containerSecurityContext "enabled" | toYaml | nindent 10 }}
-        {{- end }}
-        env:
-        - name: REDIS_REPLICATION_MODE
-          value: master
-        - name: REDIS_PASSWORD
-          valueFrom:
-            secretKeyRef:
-            {{- if .Values.redis.existingSecret }}
-              name: {{ .Values.redis.existingSecret }}
-            {{- else if not .Values.distribution.unifiedSecretInstallation }}
-              name: {{ include "distribution.fullname" . }}
-            {{- else }}
-              name: {{ template "distribution.unifiedSecretPrependReleaseName" . }}-unified-secret
-            {{- end }}
-              key: redis-password
-        - name: REDIS_PORT
-          value: {{ .Values.redis.port | quote }}
-        - name: REDIS_DISABLE_COMMANDS
-          value: {{ .Values.redis.disableCommands }}
-        ports:
-        - name: redis
-          containerPort: {{ .Values.redis.port }}
-        readinessProbe:
-          initialDelaySeconds: 10
-          timeoutSeconds: 5
-          exec:
-            command:
-            - redis-cli
-            - ping
-        livenessProbe:
-          initialDelaySeconds: 30
-          timeoutSeconds: 5
-          exec:
-            command:
-            - redis-cli
-            - ping
-        resources:
-{{ toYaml .Values.redis.resources | indent 10 }}
-        volumeMounts:
-        - name: redis-data
-          mountPath: {{ .Values.redis.persistence.path }}
       {{- $mountPath := .Values.distribution.persistence.mountPath }}
       {{- range .Values.distribution.loggers }}
       - name: {{ . | replace "_" "-" | replace "." "-" }}
@@ -526,7 +471,6 @@ spec:
 {{ toYaml .Values.filebeat.readinessProbe | indent 10 }}
         resources:
 {{ toYaml .Values.filebeat.resources | indent 10 }}
-        terminationGracePeriodSeconds: {{ .Values.terminationGracePeriod }}
       {{- end }}
     {{- if or .Values.common.customSidecarContainers .Values.global.customSidecarContainers }}
 {{ tpl (include "distribution.customSidecarContainers" .) . | indent 6 }}
@@ -600,16 +544,6 @@ spec:
       - name: distribution-data
         emptyDir:
           sizeLimit: {{ .Values.distribution.persistence.size }}
-      {{- if not .Values.redis.persistence.enabled }}
-      - name: redis-data
-        emptyDir:
-          sizeLimit: {{ .Values.redis.persistence.size }}
-      {{- end }}
-      {{- if and .Values.redis.persistence.enabled .Values.redis.persistence.existingClaim }}
-      - name: redis-data
-        persistentVolumeClaim:
-          claimName: {{ .Values.redis.persistence.existingClaim }}
-      {{- end }}
       {{- if .Values.distribution.loggers }}
       - name: tail-logger-script
         configMap:
@@ -630,20 +564,3 @@ spec:
         configMap:
           name: {{ template "distribution.fullname" . }}-configmaps
       {{- end }}
-  {{- if and .Values.redis.persistence.enabled (not .Values.redis.persistence.existingClaim) }}
-  volumeClaimTemplates:
-    - metadata:
-        name: redis-data
-      spec:
-        {{- if .Values.redis.persistence.storageClass }}
-        {{- if (eq "-" .Values.redis.persistence.storageClass) }}
-        storageClassName: ''
-        {{- else }}
-        storageClassName: '{{ .Values.redis.persistence.storageClass }}'
-        {{- end }}
-        {{- end }}
-        accessModes: [ '{{ .Values.redis.persistence.accessMode }}' ]
-        resources:
-          requests:
-            storage: {{ .Values.redis.persistence.size }}
-  {{- end }}

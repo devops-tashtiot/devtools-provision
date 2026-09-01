@@ -1,0 +1,111 @@
+# artifactory subchart
+artifactory:
+  containerSecurityContext:
+    enabled: false
+  apptrust:
+    podSecurityContext:
+      enabled: false
+    containerSecurityContext:
+      enabled: false
+  artifactory:
+    podSecurityContext:
+      enabled: false
+  jfbus:
+    podSecurityContext:
+      enabled: false
+    containerSecurityContext:
+      enabled: false
+  ## Generate a self-signed TLS certificate for nginx HTTPS. Opt-in, default off.
+  ## DEV/TEST ONLY. The generated private key is created inside the cluster and
+  ## is not issued by a trusted CA. In production, provide a real certificate
+  ## via nginx.tlsSecretName instead.
+  ## Ignored when nginx.tlsSecretName is set or nginx.https.enabled is false.
+  nginx:
+    generateSelfSignedCert: true
+    podSecurityContext:
+      enabled: false
+    containerSecurityContext:
+      enabled: false
+  platformfederation:
+    podSecurityContext:
+      enabled: false
+    containerSecurityContext:
+      enabled: false
+  rtfs:
+    podSecurityContext:
+      enabled: false
+    containerSecurityContext:
+      enabled: false
+  unifiedpolicy:
+    podSecurityContext:
+      enabled: false
+    containerSecurityContext:
+      enabled: false
+
+# catalog subchart
+catalog:
+  podSecurityContext:
+    enabled: false
+  containerSecurityContext:
+    enabled: false
+
+# distribution subchart
+distribution:
+  podSecurityContext:
+    enabled: false
+  containerSecurityContext:
+    enabled: false
+  redis:
+    containerSecurityContext:
+      enabled: false
+
+# postgresql subchart
+postgresql:
+  primary:
+    podSecurityContext:
+      enabled: false
+    containerSecurityContext:
+      enabled: false
+  readReplicas:
+    podSecurityContext:
+      enabled: false
+    containerSecurityContext:
+      enabled: false
+
+# rabbitmq subchart
+rabbitmq:
+  podSecurityContext:
+    enabled: false
+  containerSecurityContext:
+    enabled: false
+
+# worker subchart
+worker:
+  podSecurityContext:
+    enabled: false
+  containerSecurityContext:
+    enabled: false
+
+# bridge subchart
+bridge:
+  podSecurityContext:
+    enabled: false
+  containerSecurityContext:
+    enabled: false
+
+# xray subchart
+xray:
+  podSecurityContext:
+    enabled: false
+  containerSecurityContext:
+    enabled: false
+  catalog:
+    podSecurityContext:
+      enabled: false
+    containerSecurityContext:
+      enabled: false
+  valkey:
+    podSecurityContext:
+      enabled: false
+    containerSecurityContext:
+      enabled: false
