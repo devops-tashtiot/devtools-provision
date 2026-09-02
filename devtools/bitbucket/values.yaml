@@ -53,12 +53,14 @@ bitbucket:
       secretName: bitbucket-license
       secretKey: license-key
 
-    sysadminCredentials:
-      secretName: bitbucket-sysadmin
-      usernameSecretKey: username
-      passwordSecretKey: password
-      displayNameSecretKey: displayName
-      emailAddressSecretKey: emailAddress
+    # No sysadminCredentials block: the chart's SETUP_SYSADMIN_* env vars
+    # (username/password/displayName/emailAddress) are wired as one atomic
+    # group in charts/bitbucket/templates/_helpers.tpl's
+    # "bitbucket.sysadminEnvVars" — `{{ if .secretName }}` gates all four
+    # together, so there's no way to pre-seed username/displayName/email
+    # without also pre-seeding password. Left unset entirely so Bitbucket's
+    # own one-time browser setup wizard handles all of it on first login,
+    # same as Jira already does.
 
     additionalEnvironmentVariables:
       - name: OPENSEARCH_JAVA_OPTS
@@ -119,12 +121,9 @@ wrapper:
     # `license` above when set, via an ExternalSecret — keeps the license out
     # of git. Requires the external-secrets-operator devtool to be deployed.
     licenseSsmParameter: ""
-    admin:
-      username: ""
-      displayName: "Bitbucket Admin"
-      emailAddress: "admin@example.com"
-    # No password field — Bitbucket's own one-time browser setup wizard sets
-    # the initial admin password on first login instead.
+    # No admin block — Bitbucket's own one-time browser setup wizard sets
+    # the initial admin username/password/displayName/email instead (see
+    # bitbucket.sysadminCredentials above).
 
   # RDS master credentials (SSM SecureString paths) — used only by the
   # additionalInitContainer (see devtools-definition) that ensures this tool's
