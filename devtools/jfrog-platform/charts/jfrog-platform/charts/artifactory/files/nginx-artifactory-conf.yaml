@@ -1,4 +1,4 @@
-{{- if .Values.nginx.https.enabled }}
+{{- if include "nginx.httpsEffective" . }}
 ssl_protocols TLSv1 TLSv1.1 TLSv1.2 TLSv1.3;
 ssl_certificate  {{ .Values.nginx.persistence.mountPath }}/ssl/tls.crt;
 ssl_certificate_key  {{ .Values.nginx.persistence.mountPath }}/ssl/tls.key;
@@ -27,32 +27,34 @@ upstream artifactory {
 ## server configuration
 server {
 {{- if .Values.nginx.internalPortHttps }}
+{{- if include "nginx.httpsEffective" . }}
 {{- if .Values.nginx.singleStackIPv6Cluster }}
-listen [::]:{{ .Values.nginx.internalPortHttps }} ssl;
+listen [::]:{{ .Values.nginx.internalPortHttps }} {{ if .Values.nginx.httpsUseProxyProtocol }}proxy_protocol{{ end }} ssl;
 {{- else -}}
-listen {{ .Values.nginx.internalPortHttps }} ssl;
+listen {{ .Values.nginx.internalPortHttps }} {{ if .Values.nginx.httpsUseProxyProtocol }}proxy_protocol{{ end }} ssl;
+{{- end }}
 {{- end }}
 {{- else -}}
-{{- if .Values.nginx.https.enabled }}
+{{- if include "nginx.httpsEffective" . }}
 {{- if .Values.nginx.singleStackIPv6Cluster }}
-listen [::]:{{ .Values.nginx.https.internalPort }} ssl;
+listen [::]:{{ .Values.nginx.https.internalPort }} {{ if .Values.nginx.httpsUseProxyProtocol }}proxy_protocol{{ end }} ssl;
 {{- else -}}
-listen {{ .Values.nginx.https.internalPort }} ssl;
+listen {{ .Values.nginx.https.internalPort }} {{ if .Values.nginx.httpsUseProxyProtocol }}proxy_protocol{{ end }} ssl;
 {{- end }}
 {{- end }}
 {{- end }}
 {{- if .Values.nginx.internalPortHttp }}
 {{- if .Values.nginx.singleStackIPv6Cluster }}
-listen [::]:{{ .Values.nginx.internalPortHttp }};
+listen [::]:{{ .Values.nginx.internalPortHttp }} {{ if .Values.nginx.httpUseProxyProtocol }}proxy_protocol{{ end }};
 {{- else -}}
-listen {{ .Values.nginx.internalPortHttp }};
+listen {{ .Values.nginx.internalPortHttp }} {{ if .Values.nginx.httpUseProxyProtocol }}proxy_protocol{{ end }};
 {{- end }}
 {{- else -}}
 {{- if .Values.nginx.http.enabled }}
 {{- if .Values.nginx.singleStackIPv6Cluster }}
-listen [::]:{{ .Values.nginx.http.internalPort }};
+listen [::]:{{ .Values.nginx.http.internalPort }} {{ if .Values.nginx.httpUseProxyProtocol }}proxy_protocol{{ end }};
 {{- else -}}
-listen {{ .Values.nginx.http.internalPort }};
+listen {{ .Values.nginx.http.internalPort }} {{ if .Values.nginx.httpUseProxyProtocol }}proxy_protocol{{ end }};
 {{- end }}
 {{- end }}
 {{- end }}
@@ -69,7 +71,14 @@ if ( $scheme = "http" ) {
 ## Application specific logs
 ## access_log /var/log/nginx/artifactory-access.log timing;
 ## error_log /var/log/nginx/artifactory-error.log;
-rewrite ^/artifactory/?$ / redirect;
+
+{{- if .Values.nginx.portInRedirect }}
+port_in_redirect {{ .Values.nginx.portInRedirect }};
+{{- end }}
+{{- if .Values.nginx.absoluteRedirect }}
+absolute_redirect {{ .Values.nginx.absoluteRedirect }};
+{{- end }}
+
 if ( $repo != "" ) {
   rewrite ^/(v1|v2)/(.*) /artifactory/api/docker/$repo/$1/$2 break;
 }
@@ -80,7 +89,11 @@ location / {
   proxy_read_timeout  900;
   proxy_pass_header   Server;
   proxy_cookie_path   ~*^/.* /;
+  {{- if .Values.nginx.preserveEncodedSlashes }}
+  proxy_pass          {{ include "artifactory.scheme" . }}://router$request_uri;
+  {{- else }}
   proxy_pass          {{ include "artifactory.scheme" . }}://router/;
+  {{- end }}
   proxy_set_header    Connection "";
   {{- if .Values.nginx.service.ssloffload}}
   {{- if .Values.nginx.service.ssloffloadForceHttps}}
@@ -109,9 +122,17 @@ location / {
   add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
   location /artifactory/ {
     if ( $request_uri ~ ^/artifactory/(.*)$ ) {
+      {{- if .Values.nginx.preserveEncodedSlashes }}
+      proxy_pass       http://artifactory$request_uri;
+      {{- else }}
       proxy_pass       http://artifactory/artifactory/$1;
+      {{- end }}
     }
+    {{- if .Values.nginx.preserveEncodedSlashes }}
+    proxy_pass         http://artifactory$request_uri;
+    {{- else }}
     proxy_pass         http://artifactory/artifactory/;
+    {{- end }}
   }
   location /pipelines/ {
     proxy_http_version 1.1;

@@ -10,6 +10,9 @@ metadata:
   {{- if .Values.commonAnnotations }}
   annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
   {{- end }}
+{{- if .Values.securityContext }}
+    {{- fail ".Values.securityContext is no longer supported and should be replaced with .Values.containerSecurityContext" }}
+{{- end }}
 spec:
   {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
@@ -43,8 +46,8 @@ spec:
         - name: 'copy-system-yaml'
           image: {{ template "initContainers.image" . }}
           imagePullPolicy: {{ .Values.initContainers.image.pullPolicy | quote }}
-          {{- if .Values.securityContext.enabled }}
-          securityContext: {{- omit .Values.securityContext "enabled" | toYaml | nindent 12 }}
+          {{- if .Values.containerSecurityContext.enabled }}
+          securityContext: {{- omit .Values.containerSecurityContext "enabled" | toYaml | nindent 12 }}
           {{- end }}
           {{- if .Values.initContainers.resources }}
           resources: {{- toYaml .Values.initContainers.resources | nindent 12 }}
@@ -53,19 +56,19 @@ spec:
             - '/bin/bash'
             - '-c'
             - >
-              echo "Copy system.yaml to /opt/jfrog/worker/var/etc";
-              mkdir -p /opt/jfrog/worker/var/etc;
+              echo "Copy system.yaml to /var/opt/jfrog/worker/etc";
+              mkdir -p /var/opt/jfrog/worker/etc;
             {{- if .Values.systemYamlOverride.existingSecret }}
-              cp -fv /tmp/etc/{{ .Values.systemYamlOverride.dataKey }} /opt/jfrog/worker/var/etc/system.yaml;
+              cp -fv /tmp/etc/{{ .Values.systemYamlOverride.dataKey }} /var/opt/jfrog/worker/etc/system.yaml;
             {{- else }}
-              cp -fv /tmp/etc/system.yaml /opt/jfrog/worker/var/etc/system.yaml;
+              cp -fv /tmp/etc/system.yaml /var/opt/jfrog/worker/etc/system.yaml;
             {{- end }}
-              echo "Remove /opt/jfrog/worker/var/lost+found folder if exists";
-              rm -rfv /opt/jfrog/worker/var/lost+found;
-              mkdir -p /opt/jfrog/worker/var/data/worker/usage;
+              echo "Remove /var/opt/jfrog/worker/lost+found folder if exists";
+              rm -rfv /var/opt/jfrog/worker/lost+found;
+              mkdir -p /var/opt/jfrog/worker/data/worker/usage;
           volumeMounts:
             - name: data
-              mountPath: "/opt/jfrog/worker/var"
+              mountPath: "/var/opt/jfrog/worker"
             - name: systemyaml
               {{- if .Values.systemYamlOverride.existingSecret }}
               mountPath: "/tmp/etc/{{ .Values.systemYamlOverride.dataKey }}"
@@ -78,8 +81,8 @@ spec:
         - name: copy-custom-certificates
           image: {{ template "initContainers.image" . }}
           imagePullPolicy: {{ .Values.initContainers.image.pullPolicy | quote }}
-          {{- if .Values.securityContext.enabled }}
-          securityContext: {{- omit .Values.securityContext "enabled" | toYaml | nindent 12 }}
+          {{- if .Values.containerSecurityContext.enabled }}
+          securityContext: {{- omit .Values.containerSecurityContext "enabled" | toYaml | nindent 12 }}
           {{- end }}
           {{- if .Values.initContainers.resources }}
           resources: {{- toYaml .Values.initContainers.resources | nindent 12 }}
@@ -91,7 +94,7 @@ spec:
 {{ include "worker.copyCustomCerts" . | indent 14 }}
           volumeMounts:
             - name: data
-              mountPath: "/opt/jfrog/worker/var"
+              mountPath: "/var/opt/jfrog/worker"
             - name: ca-certs
               mountPath: "/tmp/certs"
       {{- end }}
@@ -104,8 +107,8 @@ spec:
       {{- end }}
       containers:
         - name: {{ .Chart.Name }}
-          {{- if .Values.securityContext.enabled }}
-          securityContext: {{- omit .Values.securityContext "enabled" | toYaml | nindent 12 }}
+          {{- if .Values.containerSecurityContext.enabled }}
+          securityContext: {{- omit .Values.containerSecurityContext "enabled" | toYaml | nindent 12 }}
           {{- end }}
           image: {{ template "worker.image" . }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
@@ -176,7 +179,7 @@ spec:
 {{- end }}
           volumeMounts:
             - name: data
-              mountPath: "/opt/jfrog/worker/var"
+              mountPath: "/var/opt/jfrog/worker"
       {{- if or .Values.common.customVolumeMounts .Values.global.customVolumeMounts }}
 {{ tpl (include "worker.customVolumeMounts" .) . | indent 12 }}
       {{- end }}
@@ -190,8 +193,8 @@ spec:
         - name: {{ .Values.router.name }}
           image: {{ template "router.image" . }}
           imagePullPolicy: {{ .Values.router.image.imagePullPolicy }}
-          {{- if .Values.securityContext.enabled }}
-          securityContext: {{- omit .Values.securityContext "enabled" | toYaml | nindent 12 }}
+          {{- if .Values.containerSecurityContext.enabled }}
+          securityContext: {{- omit .Values.containerSecurityContext "enabled" | toYaml | nindent 12 }}
           {{- end }}
           volumeMounts:
             - name: data
@@ -282,8 +285,8 @@ spec:
         - name: {{ .Values.observability.name }}
           image: {{ template "observability.image" . }}
           imagePullPolicy: {{ .Values.observability.image.pullPolicy }}
-          {{- if .Values.securityContext.enabled }}
-          securityContext: {{- omit .Values.securityContext "enabled" | toYaml | nindent 12 }}
+          {{- if .Values.containerSecurityContext.enabled }}
+          securityContext: {{- omit .Values.containerSecurityContext "enabled" | toYaml | nindent 12 }}
           {{- end }}
           command:
             - '/bin/sh'
@@ -348,18 +351,18 @@ spec:
         - name: {{ . | replace "_" "-" | replace "." "-" }}
           image: {{ template "initContainers.image" $ }}
           imagePullPolicy: {{ $.Values.initContainers.image.pullPolicy | quote }}
-          {{- if $.Values.securityContext.enabled }}
-          securityContext: {{- omit $.Values.securityContext "enabled" | toYaml | nindent 12 }}
+          {{- if $.Values.containerSecurityContext.enabled }}
+          securityContext: {{- omit $.Values.containerSecurityContext "enabled" | toYaml | nindent 12 }}
           {{- end }}
           resources:
 {{ toYaml $.Values.loggersResources | indent 12 }}
           command:
             - 'sh'
             - '-c'
-            - 'sh /scripts/tail-log.sh /opt/jfrog/worker/var/log {{ . }}'
+            - 'sh /scripts/tail-log.sh /var/opt/jfrog/worker/log {{ . }}'
           volumeMounts:
             - name: data
-              mountPath: "/opt/jfrog/worker/var"
+              mountPath: "/var/opt/jfrog/worker"
             - name: tail-logger-script
               mountPath: /scripts/tail-log.sh
               subPath: tail-log.sh
@@ -368,8 +371,8 @@ spec:
         - name: {{ .Values.filebeat.name }}
           image: "{{ .Values.filebeat.image.repository }}:{{ .Values.filebeat.image.version }}"
           imagePullPolicy: {{ .Values.filebeat.image.pullPolicy }}
-          {{- if .Values.securityContext.enabled }}
-          securityContext: {{- omit .Values.securityContext "enabled" | toYaml | nindent 12 }}
+          {{- if .Values.containerSecurityContext.enabled }}
+          securityContext: {{- omit .Values.containerSecurityContext "enabled" | toYaml | nindent 12 }}
           {{- end }}
           args:
             - "-e"
@@ -381,7 +384,7 @@ spec:
               readOnly: true
               subPath: filebeat.yml
             - name: data
-              mountPath: "/opt/jfrog/worker/var"
+              mountPath: "/var/opt/jfrog/worker"
           livenessProbe:
 {{ toYaml .Values.filebeat.livenessProbe | indent 12 }}
           readinessProbe:

@@ -1,7 +1,47 @@
 # JFrog Xray Chart Changelog
 All changes to this chart will be documented in this file.
 
-## [103.124.20] - Jun 13, 2025
+## [103.150.17] - Jun 26, 2026
+* Fix `wait-for-rabbitmq-replicas-quorum` init container exposing RabbitMQ credentials in pod logs due to bash trace mode (`-x`).
+* Added support for the rabbitmq `quorum_queue_non_voters` feature flag and increased `max_message_size` to 128 MB.
+* Update valkey.kubectl.image.repository and valkey.kubectl.image.tag to `echohq/kubectl:1.35.6`
+
+## [103.148.0] - Jun 25, 2026
+* Update postgresql tag version to `17.10.0-debian`
+* **Breaking changes**
+* Changed postgresql.image.repository to `echohq/postgres`
+* Update rabbitmq.migration.image.repository and rabbitmq.migration.image.tag to `echohq/kubectl:1.35.6`
+
+## [103.143.0] - Mar 17, 2026
+* Add support to set observability tag from global.versions
+
+## [103.141.0] - TBD
+* Update postgresql tag version to `17.8.0-debian`
+* Added `.Values.xray.metrics.enabled` flag to expose Xray metrics.
+
+## [103.140.0] - Feb 13, 2026
+* Remove support for panoramic service.
+
+## [103.137.0] - Dec 23, 2025
+* Optimized xray pre upgrade hook
+* Fix RabbitMQ post-update hook fails during upgrade due to non-replicated 'aliveness-test' queue
+* Removed `.Values.xray.openMetrics.enabled` flag to remove support for metrics.
+
+## [103.136.0] - Dec 09, 2025
+* Added support for the environment variable `JF_SHARED_NODE_POD_IP`. Its value will be used for `shared.node.ip` if a specific `shared.node.ip` is not provided
+
+## [103.131.0] - Sep 22, 2025
+* Add existingContent queues to keda - Xray should scale up replicas based on existingContent queues size
+* Add env variable `JF_SHARED_NODE_IP` to router container
+* Add support for Xray full split pod. Enabling this setting will divide the Xray pod into multiple deployments: xray-server, xray-indexer, xray-persist, xray-analysis, xray-policyenforcer, xray-sbom
+
+
+## [103.130.0] - Sep 9, 2025
+* **Important changes**
+* Update postgresql tag version to `17.6.0-debian-12-r2`
+* Set resourcesPreset to none for bitnami charts
+
+## [103.124.0] - Jun 13, 2025
 * Fix the xray xsmall sizing issue that caused problems with DB sync.
 * Added extra validation checks for quorum queues
 * Added Rabbitmq 4 validation checks

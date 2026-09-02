@@ -25,8 +25,6 @@ artifactory:
   extraEnvironmentVariables:
     - name: MALLOC_ARENA_MAX
       value: "16"
-    - name: SKIP_WAIT_FOR_EXTERNAL_DB
-      value: "true"
 
   javaOpts:
     other: >
@@ -69,8 +67,6 @@ access:
   extraEnvironmentVariables:
     - name: MALLOC_ARENA_MAX
       value: "16"
-    - name: SKIP_WAIT_FOR_EXTERNAL_DB
-      value: "true"
 
 router:
   resources:
@@ -85,10 +81,10 @@ frontend:
   resources:
     requests:
       cpu: "1"
-      memory: 500Mi
+      memory: 1Gi
     limits:
       # cpu: "5"
-      memory: 1Gi
+      memory: 2Gi
 
 metadata:
   database:
@@ -134,7 +130,7 @@ jfconfig:
       cpu: 100m
       memory: 100Mi
     limits:
-      memory: 150Mi
+      memory: 1500Mi
   extraEnvironmentVariables:
     - name: MALLOC_ARENA_MAX
       value: "8"      
@@ -210,3 +206,57 @@ rtfs:
     limits:
       # cpu: "2"
       memory: 3500Mi
+
+jfbus:
+  resources:
+    requests:
+      cpu: 500m
+      memory: 3500Mi
+    limits:
+      # cpu: "2"
+      memory: 3500Mi
+
+jfmelt:
+  resources:
+    requests:
+      cpu: 500m
+      memory: 500Mi
+    limits:
+      # cpu: "2"
+      memory: 1Gi
+
+platformfederation:
+  resources:
+    requests:
+      cpu: 225m
+      memory: 180Mi
+    limits:
+      # cpu: "1"
+      memory: 2Gi
+
+apptrust:
+  resources:
+    requests:
+      cpu: 2
+      memory: 1Gi
+    limits:
+      # cpu: "5"
+      memory: 2.5Gi
+
+unifiedpolicy:
+  resources:
+    requests:
+      cpu: 2
+      memory: 1Gi
+    limits:
+      # cpu: "5"
+      memory: 2.5Gi
+
+evaluation:
+  resources:
+    requests:
+      cpu: 2
+      memory: 1Gi
+    limits:
+      # cpu: "5"
+      memory: 2.5Gi

@@ -82,6 +82,13 @@ topologySpreadConstraints:
 Common initContainers for the pods
 */}}
 {{- define "xray.initContainers" -}}
+{{- $skipQuorum := false -}}
+{{- $ctx := . -}}
+{{- if and (kindIs "map" .) (hasKey . "root") -}}
+{{- $ctx = .root -}}
+{{- $skipQuorum = default false .skipRabbitmqQuorumWait -}}
+{{- end -}}
+{{- with $ctx -}}
 {{- if or .Values.common.customInitContainersBegin .Values.global.customInitContainersBegin }}
 {{ tpl (include "xray.customInitContainersBegin" .) . }}
 {{- end }}
@@ -255,11 +262,11 @@ Common initContainers for the pods
     ready=false;
     while ! $ready; do echo waiting;
       timeout 2s bash -c "</dev/tcp/{{ .Release.Name }}-postgresql/{{ .Values.postgresql.primary.service.ports.postgresql }}"; exit_status=$?;
-      if [[ $exit_status -eq 0 ]]; then ready=true; echo "database ok"; fi; sleep 1; 
+      if [[ $exit_status -eq 0 ]]; then ready=true; echo "database ok"; fi; sleep 1;
     done
 {{- end }}
 {{- end }}
-{{- if and .Values.global.xray.rabbitmq.haQuorum.enabled .Values.common.rabbitmq.waitForReplicasQuorumOnStartup }}
+{{- if and .Values.global.xray.rabbitmq.haQuorum.enabled .Values.common.rabbitmq.waitForReplicasQuorumOnStartup (not $skipQuorum) }}
 - name: "wait-for-rabbitmq-replicas-quorum"
   image: {{ include "xray.getImageInfoByValue" (list . "initContainers") }}
   imagePullPolicy: {{ .Values.initContainers.image.pullPolicy }}
@@ -270,8 +277,7 @@ Common initContainers for the pods
 {{ toYaml .Values.initContainers.resources | indent 4 }}
   command:
   - 'bash'
-  - '-c'
-  - -ecx
+  - -ec
   - |
     echo "Waiting for rabbitmq replicas quorum to be running"
     ready=false;
@@ -285,15 +291,15 @@ Common initContainers for the pods
       additionalFlags="--insecure"
     fi
     rabbitMqManagementUrl=$(echo $JF_SHARED_RABBITMQ_URL | sed -e "s/amqp:/${managerSchema}:/" -e "s/amqps:/${managerSchema}:/" -e "s/:${amqpPort}/:${managerPort}/" -e "s/:${amqpTlsPort}/:${managerPort}/")
-    while ! $ready; do echo waiting;
+    while ! $ready; do echo "waiting for rabbitmq quorum...";
       # This would be better done with jq instead of grep -o
       # jq 'map(select ( .running == true )) | length')
       # but currently we do not have jq in the UBI-minimal base image approved by the installer team
       nodesNum=$(curl -s ${additionalFlags} -u${JF_SHARED_RABBITMQ_USERNAME}:${JF_SHARED_RABBITMQ_PASSWORD} ${rabbitMqManagementUrl}api/nodes | grep -o '"running"\s*:true' | wc -l | tr -d '[:space:]')
-      echo $nodesNum
+      echo "running nodes: $nodesNum"
       quorumSize=$(( $JF_SHARED_RABBITMQ_REPLICASCOUNT/2 + 1 ))
-      echo $quorumSize
-      if [[ "$nodesNum" -ge "$quorumSize" ]]; then ready=true; echo "rabbitmq ok"; fi; sleep 5; 
+      echo "quorum required: $quorumSize"
+      if [[ "$nodesNum" -ge "$quorumSize" ]]; then ready=true; echo "rabbitmq quorum ok"; fi; sleep 5;
     done
   env:
 {{- if eq (include "xray.rabbitmq.isManagementListenerTlsEnabled" .) "true" }}
@@ -337,7 +343,7 @@ Common initContainers for the pods
         key: rabbitmq-password
 {{- end }}
   - name: JF_SHARED_RABBITMQ_REPLICASCOUNT
-{{- if .Values.rabbitmq.enabled }}  
+{{- if .Values.rabbitmq.enabled }}
     value: "{{ .Values.rabbitmq.replicaCount }}"
 {{- else }}
     value: "{{ .Values.global.xray.rabbitmq.replicaCount }}"
@@ -349,6 +355,7 @@ Common initContainers for the pods
 {{- if .Values.hostAliases }}
 hostAliases:
 {{ toYaml .Values.hostAliases }}
+{{- end }}
 {{- end }}
 {{- end -}}
 
@@ -378,6 +385,10 @@ Common router container for the pods
 {{ toYaml . | indent 4 }}
   {{- end }}
   env:
+  - name: JF_SHARED_NODE_POD_IP
+    valueFrom:
+      fieldRef:
+        fieldPath: status.podIP
   - name: JF_ROUTER_TOPOLOGY_LOCAL_REQUIREDSERVICETYPES
 {{- if eq $indexReference "indexer" }}
     value: "jfxidx"
@@ -391,9 +402,122 @@ Common router container for the pods
     value: "jfxpe"
 {{- else if eq $indexReference "server" }}
     value: "jfxr,jfob"
-{{- else if eq $indexReference "panoramic" }}
-    value: ""
+{{- else if eq $indexReference "curation" }}
+    value: "jfxcur"
+{{- else if eq $indexReference "aiscanner" }}
+    value: "jfxais"
+{{- else if eq $indexReference "reporting" }}
+    value: "jfxrep"
+{{- else if eq $indexReference "jascontextual" }}
+    value: "jfxjac"
+{{- else if eq $indexReference "jasexposures" }}
+    value: "jfxjae"
 {{- end }}
+  - name: JF_ROUTER_TOPOLOGY_LOCAL_ENABLEUNHEALTHYONSERVICEDOWN
+    value: {{ include "router.topology.local.enableUnhealthyOnServiceDown" $dot }}
+  {{- if $dot.Values.router.extraEnvVars }}
+  {{- tpl $dot.Values.router.extraEnvVars . | nindent 2 }}
+  {{- end }}
+  ports:
+    - name: http-router
+      containerPort: {{ $dot.Values.router.internalPort }}
+  volumeMounts:
+  - name: data-volume
+    mountPath: {{ $dot.Values.router.persistence.mountPath | quote }}
+{{- if or $dot.Values.common.customVolumeMounts $dot.Values.global.customVolumeMounts }}
+{{ tpl (include "xray.customVolumeMounts" $dot) $dot | indent 2 }}
+{{- end }}
+{{- with $dot.Values.router.customVolumeMounts }}
+{{ tpl . $ | indent 2 }}
+{{- end }}
+  resources:
+{{ toYaml $dot.Values.router.resources | indent 4 }}
+{{- if $dot.Values.router.startupProbe.enabled }}
+  startupProbe:
+{{ tpl $dot.Values.router.startupProbe.config $dot | indent 4 }}
+{{- end }}
+{{- if $dot.Values.router.livenessProbe.enabled }}
+  livenessProbe:
+{{ tpl $dot.Values.router.livenessProbe.config $dot | indent 4 }}
+{{- end }}
+{{- if $dot.Values.router.readinessProbe.enabled }}
+  readinessProbe:
+{{ tpl $dot.Values.router.readinessProbe.config $dot | indent 4 }}
+{{- end }}
+{{- end -}}
+
+{{/*
+Common router container for the scale to zero pods 
+*/}}
+{{- define "xray.routerContainerScaletoZero" -}}
+{{- $dot := index . 0 }}
+{{- $indexReference := index . 1 }}
+- name: {{ $dot.Values.router.name }}
+  image: {{ include "xray.getImageInfoByValue" (list $dot "router") }}
+  imagePullPolicy: {{ $dot.Values.router.image.imagePullPolicy }}
+  {{- if $dot.Values.containerSecurityContext.enabled }}
+  securityContext: {{- tpl (omit $dot.Values.containerSecurityContext "enabled" | toYaml) $dot | nindent 4 }}
+  {{- end }}
+  command:
+    - '/bin/sh'
+    - '-c'
+    - |
+    {{- with $dot.Values.common.preStartCommand }}
+      echo "Running custom common preStartCommand command"
+      {{ tpl . $ }};
+    {{- end }}
+      if [ "$JF_SHARED_EXIT_ON_IDLE_ENABLED" = "true" ]; then
+        EXIT_FILE="{{ $dot.Values.router.persistence.mountPath }}/exit-now"
+        /opt/jfrog/router/app/bin/entrypoint-router.sh &
+        SIDECAR_PID=$!
+        while [ ! -f "$EXIT_FILE" ] && kill -0 $SIDECAR_PID 2>/dev/null; do
+          sleep 1
+        done
+          if [ -f "$EXIT_FILE" ]; then
+            echo "Exit signal detected: $EXIT_FILE"
+          fi
+          echo "Shutting down Router sidecar"
+          kill $SIDECAR_PID 2>/dev/null
+          wait $SIDECAR_PID 2>/dev/null || exit 0
+          exit 0
+      else
+        exec /opt/jfrog/router/app/bin/entrypoint-router.sh
+      fi
+  {{- with $dot.Values.router.lifecycle }}
+  lifecycle:
+{{ toYaml . | indent 4 }}
+  {{- end }}
+  env:
+  - name: JF_SHARED_NODE_POD_IP
+    valueFrom:
+      fieldRef:
+        fieldPath: status.podIP
+  - name: JF_SHARED_EXIT_ON_IDLE_ENABLED
+    value: "true"
+  - name: JF_ROUTER_TOPOLOGY_LOCAL_REQUIREDSERVICETYPES
+{{- if eq $indexReference "indexer" }}
+    value: "jfxidx"
+{{- else if eq $indexReference "persist" }}
+    value: "jfxpst"
+{{- else if eq $indexReference "analysis" }}
+    value: "jfxana"
+{{- else if eq $indexReference "sbom" }}
+    value: "jfxsbm"
+{{- else if eq $indexReference "policyenforcer" }}
+    value: "jfxpe"
+{{- else if eq $indexReference "server" }}
+    value: "jfxr,jfob"
+{{- else if eq $indexReference "aiscanner" }}
+    value: "jfxais"
+{{- else if eq $indexReference "reporting" }}
+    value: "jfxrep"
+{{- else if eq $indexReference "jascontextual" }}
+    value: "jfxjac"
+{{- else if eq $indexReference "jasexposures" }}
+    value: "jfxjae"
+{{- end }}
+  - name: JF_ROUTER_LIFECYCLE_SHUTDOWN_ENTRYPOINTSGRACETIMEOUT
+    value: "1s"
   {{- if $dot.Values.router.extraEnvVars }}
   {{- tpl $dot.Values.router.extraEnvVars . | nindent 2 }}
   {{- end }}
@@ -420,6 +544,7 @@ Common router container for the pods
 {{ tpl $dot.Values.router.readinessProbe.config $dot | indent 4 }}
 {{- end }}
 {{- end -}}
+
 
 {{/*
 Common observability container for the pods
@@ -457,6 +582,71 @@ Common observability container for the pods
   startupProbe:
 {{ tpl .Values.observability.startupProbe.config . | indent 4 }}
 {{- end }}
+{{- if .Values.observability.readinessProbe.enabled }}
+  readinessProbe:
+{{ tpl .Values.observability.readinessProbe.config . | indent 4 }}
+{{- end }}
+{{- if .Values.observability.livenessProbe.enabled }}
+  livenessProbe:
+{{ tpl .Values.observability.livenessProbe.config . | indent 4 }}
+{{- end }}
+{{- end -}}
+
+
+{{/*
+Common observability container for the scale to zero
+*/}}
+{{- define "xray.observabilityContainerScaletoZero" -}}
+- name: {{ .Values.observability.name }}
+  image: {{ include "xray.getImageInfoByValue" (list . "observability") }}
+  imagePullPolicy: {{ .Values.observability.image.imagePullPolicy }}
+{{- if .Values.containerSecurityContext.enabled }}
+  securityContext: {{- tpl (omit .Values.containerSecurityContext "enabled" | toYaml) . | nindent 4 }}
+{{- end }}
+  command:
+    - '/bin/sh'
+    - '-c'
+    - |
+      {{- with .Values.common.preStartCommand }}
+        echo "Running custom common preStartCommand command"
+        {{ tpl . $ }};
+      {{- end }}
+      if [ "$JF_SHARED_EXIT_ON_IDLE_ENABLED" = "true" ]; then
+        EXIT_FILE="{{ .Values.observability.persistence.mountPath }}/exit-now"
+        /opt/jfrog/observability/app/bin/entrypoint-observability.sh &
+        SIDECAR_PID=$!
+        while [ ! -f "$EXIT_FILE" ] && kill -0 $SIDECAR_PID 2>/dev/null; do
+          sleep 1
+        done
+        if [ -f "$EXIT_FILE" ]; then
+          echo "Exit signal detected: $EXIT_FILE"
+        fi
+        echo "Shutting down Observability sidecar"
+        kill $SIDECAR_PID 2>/dev/null
+        wait $SIDECAR_PID 2>/dev/null || exit 0
+        exit 0
+      else
+        exec /opt/jfrog/observability/app/bin/entrypoint-observability.sh
+      fi
+  {{- with .Values.observability.lifecycle }}
+  lifecycle:
+{{ toYaml . | indent 4 }}
+  {{- end }}
+  env:
+    - name: JF_SHARED_EXIT_ON_IDLE_ENABLED
+      value: "true"
+{{- if .Values.observability.extraEnvVars }}
+  {{- tpl .Values.observability.extraEnvVars . | nindent 2 }}
+{{- end }}
+  volumeMounts:
+    - name: data-volume
+      mountPath: "{{ .Values.observability.persistence.mountPath }}"
+  resources:
+{{ toYaml .Values.observability.resources | indent 4 }}
+{{- if .Values.observability.startupProbe.enabled }}
+  startupProbe:
+{{ tpl .Values.observability.startupProbe.config . | indent 4 }}
+{{- end }}
 {{- if .Values.observability.livenessProbe.enabled }}
   livenessProbe:
 {{ tpl .Values.observability.livenessProbe.config . | indent 4 }}
@@ -468,6 +658,14 @@ Resolve xray server requiredServiceTypes value
 */}}
 {{- define "xray.router.server.requiredServiceTypes" -}}
 {{- $requiredTypes := "jfxr,jfob" -}}
+{{- $requiredTypes -}}
+{{- end -}}
+
+{{/*
+Resolve xray curation requiredServiceTypes value
+*/}}
+{{- define "xray.router.curation.requiredServiceTypes" -}}
+{{- $requiredTypes := "jfxcur" -}}
 {{- $requiredTypes -}}
 {{- end -}}
 
@@ -600,11 +798,55 @@ Resolve autoscalingQueues value for sbom
 {{- end -}}
 
 {{/*
-Resolve autoscalingQueues value for panoramic
+Resolve autoscalingQueues value for jascontextual
 */}}
-{{- define "xray.autoscalingQueuesPanoramic" -}}
-{{- if .Values.panoramic.autoscaling.keda.queues }}
-{{- range .Values.panoramic.autoscaling.keda.queues }}
+{{- define "xray.autoscalingQueuesJasContextual" -}}
+{{- if .Values.jascontextual.autoscaling.keda.queues }}
+{{- range .Values.jascontextual.autoscaling.keda.queues }}
+- type: rabbitmq
+  metadata:
+    name: "{{- .name -}}-queue"
+    protocol: amqp
+    queueName: {{ .name }}
+    mode: QueueLength
+    value: "{{ .value }}"
+{{- if $.Values.global.xray.rabbitmq.haQuorum.enabled }}
+    vhostName: "{{ $.Values.global.xray.rabbitmq.haQuorum.vhost }}"
+{{- end }}
+  authenticationRef:
+    name: keda-trigger-auth-rabbitmq-conn-xray
+{{- end }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Resolve autoscalingQueues value for jasexposures
+*/}}
+{{- define "xray.autoscalingQueuesJasExposures" -}}
+{{- if .Values.jasexposures.autoscaling.keda.queues }}
+{{- range .Values.jasexposures.autoscaling.keda.queues }}
+- type: rabbitmq
+  metadata:
+    name: "{{- .name -}}-queue"
+    protocol: amqp
+    queueName: {{ .name }}
+    mode: QueueLength
+    value: "{{ .value }}"
+{{- if $.Values.global.xray.rabbitmq.haQuorum.enabled }}
+    vhostName: "{{ $.Values.global.xray.rabbitmq.haQuorum.vhost }}"
+{{- end }}
+  authenticationRef:
+    name: keda-trigger-auth-rabbitmq-conn-xray
+{{- end }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Resolve autoscalingQueues value for aiscanner
+*/}}
+{{- define "xray.autoscalingQueuesAiscanner" -}}
+{{- if .Values.aiscanner.autoscaling.keda.queues }}
+{{- range .Values.aiscanner.autoscaling.keda.queues }}
 - type: rabbitmq
   metadata:
     name: "{{- .name -}}-queue"
@@ -649,6 +891,50 @@ Resolve autoscalingQueues value for server
 {{- define "xray.autoscalingQueuesServer" -}}
 {{- if .Values.server.autoscaling.keda.queues }}
 {{- range .Values.server.autoscaling.keda.queues }}
+- type: rabbitmq
+  metadata:
+    name: "{{- .name -}}-queue"
+    protocol: amqp
+    queueName: {{ .name }}
+    mode: QueueLength
+    value: "{{ .value }}"
+{{- if $.Values.global.xray.rabbitmq.haQuorum.enabled }}
+    vhostName: "{{ $.Values.global.xray.rabbitmq.haQuorum.vhost }}"
+{{- end }}
+  authenticationRef:
+    name: keda-trigger-auth-rabbitmq-conn-xray
+{{- end }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Resolve autoscalingQueues value for curation
+*/}}
+{{- define "xray.autoscalingQueuesCuration" -}}
+{{- if .Values.curation.autoscaling.keda.queues }}
+{{- range .Values.curation.autoscaling.keda.queues }}
+- type: rabbitmq
+  metadata:
+    name: "{{- .name -}}-queue"
+    protocol: amqp
+    queueName: {{ .name }}
+    mode: QueueLength
+    value: "{{ .value }}"
+{{- if $.Values.global.xray.rabbitmq.haQuorum.enabled }}
+    vhostName: "{{ $.Values.global.xray.rabbitmq.haQuorum.vhost }}"
+{{- end }}
+  authenticationRef:
+    name: keda-trigger-auth-rabbitmq-conn-xray
+{{- end }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Resolve autoscalingQueues value for reporting
+*/}}
+{{- define "xray.autoscalingQueuesReporting" -}}
+{{- if .Values.reporting.autoscaling.keda.queues }}
+{{- range .Values.reporting.autoscaling.keda.queues }}
 - type: rabbitmq
   metadata:
     name: "{{- .name -}}-queue"
