@@ -123,10 +123,8 @@ wrapper:
       username: ""
       displayName: "Bitbucket Admin"
       emailAddress: "admin@example.com"
-    # SSM Parameter Store path (SecureString) holding the shared admin password
-    # (plaintext). Patched into the bitbucket-sysadmin Secret via an
-    # ExternalSecret. Requires the external-secrets-operator devtool.
-    adminPasswordSsmParameter: ""
+    # No password field — Bitbucket's own one-time browser setup wizard sets
+    # the initial admin password on first login instead.
 
   # RDS master credentials (SSM SecureString paths) — used only by the
   # additionalInitContainer (see devtools-definition) that ensures this tool's
