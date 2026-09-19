@@ -73,7 +73,10 @@ resolve.
 
 ## Adding a New Tool
 
-Use the `add-devtool` skill — don't freehand the chart structure, secrets pattern, or
-database provisioning. Only use this repo for end-user applications; cluster-wide
-infrastructure (ingress, secrets operator, tunnel, identity provider) belongs in
-`clusters-provision`/`clusters-definition` instead (`add-cluster-provision` skill).
+Use the `add-devtool` skill (`.claude/skills/add-devtool/` in this repo) — don't freehand the
+chart structure, secrets pattern, or database provisioning. It touches this repo plus
+`devtools-definition` and occasionally `devtools-labs`, but is vendored here specifically so
+it's available to anyone who only has `devtools-provision` checked out. Only use this repo for
+end-user applications; cluster-wide infrastructure (ingress, secrets operator, tunnel, identity
+provider) belongs in `clusters-provision`/`clusters-definition` instead (`add-cluster-provision`
+skill).
