@@ -303,12 +303,22 @@ rule, and nginx-ingress is what routes each request to the right tool, by matchi
 `Host` header against the Ingress resource you just created in Step A. So there is no
 per-tool `cloudflared` config to add.
 
-The only thing left to do is create the DNS record itself:
+The only thing left to do is create the DNS record itself — **managed via Terraform, not
+a manual Cloudflare API call**:
 
-1. Add a CNAME for `<tool>.devopstashtiot.page` pointing at the tunnel
-   (`7de872ce-2826-42fb-9aea-325e10e3e5fc.cfargotunnel.com`).
-2. **Confirm with the user before making the live Cloudflare API call** — it touches
-   shared infrastructure outside this repo.
+1. In `../devtools-labs/terraform/live/devtools/cloudflare/terragrunt.hcl`, add a new
+   entry to the `dns_records` map:
+   ```hcl
+   <tool> = {
+     name    = "<tool>.devopstashtiot.page"
+     type    = "CNAME"
+     content = local.tunnel_target
+   }
+   ```
+2. **Confirm with the user before running `terragrunt apply`** — it touches shared
+   infrastructure outside this repo. Once confirmed, run it from
+   `devtools-labs/terraform/live/devtools/cloudflare/`; that apply is what actually
+   creates the DNS record.
 
 ## 7. Always check whether the DNS record actually exists
 
@@ -341,6 +351,6 @@ step 6) or ask the user to confirm they'll add it themselves.
 - [ ] Optional `templates/` added for extra Secrets/PVCs if the subchart needs them
 - [ ] DB provisioned via an `additionalInitContainer` + `rds-admin-credentials` ExternalSecret in the tool's own chart/values (see section 5), not a manual `psql` session or a new RDS instance
 - [ ] Ingress host set to `<tool>.devopstashtiot.page`, TLS disabled in-cluster
-- [ ] Cloudflare DNS + `cloudflared` ingress rule added (with user confirmation)
+- [ ] DNS record added to `devtools-labs/terraform/live/devtools/cloudflare/terragrunt.hcl`'s `dns_records` map and applied (with user confirmation) — no `cloudflared` config change needed
 - [ ] DNS existence verified against Cloudflare's authoritative nameservers (not assumed) and the result reported to the user either way
 - [ ] Confirmed both repo directories use the identical tool name so ArgoCD's ApplicationSet merges correctly
