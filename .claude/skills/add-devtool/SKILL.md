@@ -29,27 +29,11 @@ unconditionally, **a tool directory must exist in both repos with the exact same
 or the sync will fail looking for the missing values file. Always create both sides
 together. No changes to `applicationset.yaml` itself are needed for a new tool.
 
-## 1. Pick the version — Data Center edition only, no cloud
+## 1. Pick the version
 
-Every devtool must be the **self-hosted / Data Center edition**, never the SaaS/cloud
-variant (e.g. Bitbucket Data Center not Bitbucket Cloud, Confluence Data Center not
-Confluence Cloud, Artifactory OSS/self-hosted not JFrog Cloud).
-
-Pin the exact version to whatever is already validated in the sibling `tashtiot-apis`
-repo's docker-compose files, e.g.:
-
-```
-../tashtiot-apis/docker-compose.artifactory.yaml
-../tashtiot-apis/docker-compose.bitbucket.yaml
-../tashtiot-apis/docker-compose.confluence.yaml
-../tashtiot-apis/docker-compose.sonarqube.yaml
-```
-
-Read the relevant compose file, extract the image tag (e.g.
-`releases-docker.jfrog.io/jfrog/artifactory-oss:7.77.5`), and use that exact version
-for `appVersion` in `Chart.yaml` and for `image.tag` in values wherever the upstream
-chart allows overriding it. If no docker-compose file exists yet for the tool, ask the
-user which version to pin rather than guessing.
+Ask the user which version to pin — never guess or default to "latest". Use that exact
+version for `appVersion` in `Chart.yaml` and for `image.tag` in values wherever the
+upstream chart allows overriding it.
 
 ## 2. Create the provisions side (`devtools-provision/devtools/<tool>/`)
 
@@ -336,7 +320,7 @@ step 6) or ask the user to confirm they'll add it themselves.
 
 ## Checklist
 
-- [ ] Version pinned from the matching `../tashtiot-apis/docker-compose.<tool>.yaml`, Data Center edition
+- [ ] Version pinned to what the user specified
 - [ ] `devtools-provision/devtools/<tool>/` created: `Chart.yaml`, `values.yaml`, unpacked chart under `charts/<subchart>/` (no `.tgz`)
 - [ ] `devtools-definition/devtools/<tool>/values.yaml` created with the same tool name, env-specific values only
 - [ ] If the tool has a license key, it's in SSM Parameter Store + synced via ExternalSecret — never plaintext in git

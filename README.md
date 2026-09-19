@@ -27,8 +27,6 @@ upstream chart under `charts/<subchart>/` (never a `.tgz`) via a `file://` depen
 
 ## Conventions
 
-- Self-hosted / Data Center edition, version pinned to whatever's already validated in
-  `../tashtiot-apis/docker-compose.<tool>.yaml`.
 - Shared Postgres instance (`devtools-rds`) — each tool provisions its own database/role
   lazily via an init container, no separate RDS instance per tool.
 - One shared admin password (`/devops/terraform-created/admin/password` in SSM) across every tool.
@@ -36,7 +34,7 @@ upstream chart under `charts/<subchart>/` (never a `.tgz`) via a `file://` depen
 
 ## Adding a new tool
 
-See the `add-devtool` skill (`.claude/skills/add-devtool/SKILL.md` at the project root) for
+See the `add-devtool` skill (`.claude/skills/add-devtool/SKILL.md` in this repo) for
 the full onboarding checklist.
 
 See [`CLAUDE.md`](./CLAUDE.md) for the fuller architecture writeup.
