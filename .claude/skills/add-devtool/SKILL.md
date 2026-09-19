@@ -282,22 +282,33 @@ estimated cost per the root `CLAUDE.md` cost-awareness rules before provisioning
 
 ## 6. Expose it
 
-Set the subchart's own ingress (most Data Center charts ship one, e.g. bitbucket's
-`ingress.create`) to host `<tool>.devopstashtiot.page`, `https: false`, and
-`nginx.ingress.kubernetes.io/ssl-redirect: "false"` — TLS terminates at Cloudflare,
-not in-cluster.
+**Step A — turn on the subchart's ingress.** Most Data Center charts ship one (e.g.
+bitbucket's `ingress.create`). In `devtools-definition/devtools/<tool>/values.yaml`,
+enable it with:
 
-**Ignore the root `CLAUDE.md`'s instructions to edit `cloudflared`'s `config.yml` on
-"the server" — that doesn't apply to this platform.** Here, `cloudflared` itself runs
-as an in-cluster devtool (`clusters-provision/clusters/cloudflared/`) with a single
-catch-all ingress rule (`service:
-http://ingress-nginx-controller.ingress-nginx.svc.cluster.local:80` — see its
-`values.yaml`); routing to the right tool happens via nginx-ingress matching the
-`Host` header on each tool's own Ingress resource, which you just created above. So
-the *only* remaining step is the DNS record — add a CNAME for the new subdomain
-pointing at the tunnel (`7de872ce-2826-42fb-9aea-325e10e3e5fc.cfargotunnel.com`).
-**Confirm with the user before making the live Cloudflare API call** — it touches
-shared infrastructure outside this repo.
+- `host: <tool>.devopstashtiot.page`
+- `https: false`
+- annotation `nginx.ingress.kubernetes.io/ssl-redirect: "false"`
+
+TLS terminates at Cloudflare, not in-cluster, so the ingress itself must stay plain HTTP.
+
+**Step B — add the DNS record. This is the only other step; do not touch `cloudflared`
+config for this.** The root `CLAUDE.md` (written for a different kind of deployment)
+says to add an ingress rule to `cloudflared`'s `config.yml` on "the server" — **that
+instruction does not apply on this platform and must be skipped.** Here, `cloudflared`
+itself runs as an in-cluster devtool (`clusters-provision/clusters/cloudflared/`) with
+one catch-all ingress rule pointing at `http://ingress-nginx-controller.ingress-nginx
+.svc.cluster.local:80` (see its `values.yaml`) — every hostname goes through that same
+rule, and nginx-ingress is what routes each request to the right tool, by matching the
+`Host` header against the Ingress resource you just created in Step A. So there is no
+per-tool `cloudflared` config to add.
+
+The only thing left to do is create the DNS record itself:
+
+1. Add a CNAME for `<tool>.devopstashtiot.page` pointing at the tunnel
+   (`7de872ce-2826-42fb-9aea-325e10e3e5fc.cfargotunnel.com`).
+2. **Confirm with the user before making the live Cloudflare API call** — it touches
+   shared infrastructure outside this repo.
 
 ## 7. Always check whether the DNS record actually exists
 
