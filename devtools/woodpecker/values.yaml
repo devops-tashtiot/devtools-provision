@@ -67,10 +67,11 @@ wrapper:
   # devtools-definition.
   #
   # Bitbucket is reached at its public hostname, which in-cluster callers
-  # resolve straight to ingress-nginx via the CoreDNS rewrites in
-  # devtools-labs/terraform/modules/minikube/main.tf (bypassing Cloudflare
-  # Access, which would otherwise 302 every machine-to-machine call to its
-  # email-OTP login page). That path presents the real Cloudflare Origin CA
+  # resolve straight to ingress-nginx via the CoreDNS rewrites (the
+  # `coredns_rewrite_hosts` variable in devtools-labs/terraform/modules/eks,
+  # applied via the coredns-custom ConfigMap) — bypassing Cloudflare Access,
+  # which would otherwise 302 every machine-to-machine call to its email-OTP
+  # login page. That path presents the real Cloudflare Origin CA
   # cert. Woodpecker's WOODPECKER_BITBUCKET_DC_SKIP_VERIFY only disables TLS
   # verification for git clone/API calls, not for the OAuth2 token exchange
   # (server/forge/bitbucketdatacenter has no SkipVerify field at all — see

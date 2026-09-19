@@ -12,7 +12,7 @@ This skill wires a new tool into the three-repo GitOps platform that lives under
 |---|---|
 | `devtools-provision` | **What to deploy** — umbrella Helm chart per tool |
 | `devtools-definition` | **How to configure per environment** — Helm values overrides |
-| `devtools-labs` | **Infrastructure** — the minikube-on-EC2 host, ArgoCD bootstrap, shared RDS |
+| `devtools-labs` | **Infrastructure** — the EKS cluster, ArgoCD bootstrap, shared RDS |
 
 All three repos already live inside this one project directory (`devops-tashtiot/`) —
 never create them elsewhere or as separate projects.
@@ -106,7 +106,7 @@ in AWS SSM Parameter Store as a `SecureString` and sync it into the cluster with
 `ExternalSecret`, following the pattern already built for bitbucket:
 
 1. Put the license in SSM (Standard tier, free): `aws ssm put-parameter --name
-   "/devtools/<tool>/license" --value "<license>" --type SecureString --region
+   "/devops/prerequisite/<tool>/license" --value "<license>" --type SecureString --region
    il-central-1 --overwrite`
 2. In `devtools-provision/devtools/<tool>/values.yaml`, add both an empty plaintext
    placeholder and an SSM-path placeholder (see `bitbucketSecrets.license` /
@@ -122,15 +122,16 @@ in AWS SSM Parameter Store as a `SecureString` and sync it into the cluster with
 
 This requires the `external-secrets-operator` devtool (already deployed under
 `clusters-provision/clusters/external-secrets-operator/`) and its cluster-wide
-`ClusterSecretStore` named `aws-parameter-store`, which reads AWS credentials from the
-minikube EC2 instance's IAM role via IMDS — no static AWS keys anywhere. If the new
-tool's SSM path falls outside `/devtools/*`, extend the `ssm_parameter_store_read` IAM
-policy resource ARN in `devtools-labs/terraform/modules/minikube/iam.tf` accordingly.
+`ClusterSecretStore` named `aws-parameter-store`, which reads AWS credentials via IRSA
+(a dedicated IAM role scoped to the `external-secrets` ServiceAccount, not node-wide IMDS
+creds) — no static AWS keys anywhere. If the new tool's SSM path falls outside
+`/devops/*`, extend the `external_secrets_ssm_read` IAM role policy resource ARN in
+`devtools-labs/terraform/modules/eks/iam.tf` accordingly.
 
-**Admin password — reuse the one shared secret, `/devtools/admin/password`.** Every
-devtool on this platform shares the same admin password (already in SSM as a
-`SecureString`, populated once — never create a per-tool `/devtools/<tool>/admin/...`
-parameter). Wire it in following the bitbucket pattern
+**Admin password — reuse the one shared secret, `/devops/terraform-created/admin/password`.**
+Every devtool on this platform shares the same admin password (already in SSM as a
+`SecureString`, populated once — never create a per-tool admin password parameter). Wire
+it in following the bitbucket pattern
 (`bitbucketSecrets.admin` / `bitbucketSecrets.adminPasswordSsmParameter` in
 `devtools-provision/devtools/bitbucket/values.yaml` and the second half of
 `devtools-provision/devtools/bitbucket/templates/secrets.yaml`):
@@ -147,8 +148,8 @@ parameter). Wire it in following the bitbucket pattern
    Secret. `Merge` is required here — it lets the plain Secret and the ExternalSecret
    both write into one object without one owning/deleting the other.
 3. In `devtools-definition/devtools/<tool>/values.yaml`, set
-   `<tool>Secrets.adminPasswordSsmParameter: "/devtools/admin/password"` and the
-   plaintext `admin.username`/`displayName`/`emailAddress` fields.
+   `<tool>Secrets.adminPasswordSsmParameter: "/devops/terraform-created/admin/password"`
+   and the plaintext `admin.username`/`displayName`/`emailAddress` fields.
 
 **Check whether the chart actually consumes these secrets before wiring them —
 don't assume it does.** Bitbucket's chart happens to support full GitOps bootstrap:
@@ -183,7 +184,7 @@ env vars to confirm it's actually consumed. **If the chart doesn't consume it, d
 not create the Secret/ExternalSecret at all** — an unused Secret that looks like
 automation but isn't is worse than no Secret, since it's misleading dead weight.
 In that case: still put the license in SSM (step above) and rely on the shared
-`/devtools/admin/password` SSM parameter, but read both directly with
+`/devops/terraform-created/admin/password` SSM parameter, but read both directly with
 `aws ssm get-parameter --with-decryption` when doing the one-time manual setup
 wizard, and say so explicitly in a comment at the top of that tool's
 `devtools-definition/devtools/<tool>/values.yaml` so the limitation isn't
@@ -223,8 +224,8 @@ declared in `devtools-definition/devtools/<tool>/values.yaml` (`confluence`,
    Secret — populated via an `ExternalSecret` (see
    `devtools-provision/devtools/<tool>/templates/rds-admin-secret.yaml`,
    guarded by `rdsAdmin.usernameSsmParameter`/`passwordSsmParameter` values) from
-   two SSM SecureString parameters: `/devtools/rds/admin-username` and
-   `/devtools/rds/admin-password`. Requires the `external-secrets-operator`
+   two SSM SecureString parameters: `/devops/terraform-created/rds/admin-username` and
+   `/devops/terraform-created/rds/admin-password`. Requires the `external-secrets-operator`
    devtool to already be deployed (it is, automatically, via the same
    ApplicationSet).
 3. **The app itself also connects as that same RDS master user** — do not create a
@@ -256,8 +257,8 @@ To onboard a new tool's database:
    `bitbucket`'s `templates/secrets.yaml` verbatim, renaming the Secret).
 2. In `devtools-definition/devtools/<tool>/values.yaml`, set
    `rdsAdmin.usernameSsmParameter`/`passwordSsmParameter` to
-   `/devtools/rds/admin-username`/`/devtools/rds/admin-password` (already
-   populated in SSM — don't recreate them), and add an `additionalInitContainer`
+   `/devops/terraform-created/rds/admin-username`/`/devops/terraform-created/rds/admin-password`
+   (already populated in SSM — don't recreate them), and add an `additionalInitContainer`
    under the subchart's own values key (e.g. `confluence.additionalInitContainers`)
    following the confluence/bitbucket example — same script, just change
    `APP_DB_NAME`. No `APP_DB_USER`/`APP_DB_PASSWORD` env vars, no `CREATE ROLE`/
@@ -346,7 +347,7 @@ step 6) or ask the user to confirm they'll add it themselves.
 - [ ] `devtools-definition/devtools/<tool>/values.yaml` created with the same tool name, env-specific values only
 - [ ] If the tool has a license key, it's in SSM Parameter Store + synced via ExternalSecret — never plaintext in git
 - [ ] Confirmed (by grepping the pulled chart, not assuming) whether it actually consumes a license/sysadmin Secret at container startup
-- [ ] If it does: admin password wired from the shared `/devtools/admin/password` SSM parameter via an ExternalSecret with `creationPolicy: Merge` (not a new per-tool password), and both license + admin user are applied automatically at startup (GitOps) — no manual setup-wizard step
+- [ ] If it does: admin password wired from the shared `/devops/terraform-created/admin/password` SSM parameter via an ExternalSecret with `creationPolicy: Merge` (not a new per-tool password), and both license + admin user are applied automatically at startup (GitOps) — no manual setup-wizard step
 - [ ] If it doesn't: no `<tool>-license`/`<tool>-sysadmin` Secret created (avoid inert plumbing) — noted in a comment in `devtools-definition/devtools/<tool>/values.yaml` that the one-time browser setup wizard is required, reading the license/admin password directly from SSM
 - [ ] Optional `templates/` added for extra Secrets/PVCs if the subchart needs them
 - [ ] DB provisioned via an `additionalInitContainer` + `rds-admin-credentials` ExternalSecret in the tool's own chart/values (see section 5), not a manual `psql` session or a new RDS instance

@@ -91,10 +91,10 @@ argo-cd:
 # argo-cd subchart's own top-level keys above.
 wrapper:
   # Ingress for argocd-server, routed through the ingress-nginx + cloudflared
-  # devtools. Disabled by default: on EKS, ingress is still terraform-managed
-  # (argocd-ingress module) to avoid a duplicate Ingress object owned by two
-  # controllers. Enable only for environments (e.g. minikube) where ingress is
-  # fully GitOps-managed — see devtools-definition/devtools/argocd/values.yaml.
+  # devtools. Disabled by default here — ArgoCD's own Ingress is fully
+  # GitOps-managed on this platform (no separate Terraform-managed Ingress
+  # object for it; see devtools-labs/CLAUDE.md's eks module writeup), so this
+  # is turned on in devtools-definition/devtools/argocd/values.yaml instead.
   ingress:
     enabled: false
     hosts: []
