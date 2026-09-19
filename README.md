@@ -1,8 +1,8 @@
 # devtools-provision
 
 Umbrella Helm charts for the self-hosted devtools platform — Jira, Bitbucket, Confluence,
-Artifactory, ArgoCD, and Xray, all self-hosted Data Center editions running on the
-`devtools-labs` cluster. This is the "what to deploy" half of a provision/definition pair;
+ArgoCD, JFrog Platform (Artifactory + Xray), Harbor, SonarQube, Woodpecker, and devops-api,
+running on the `devtools-labs` cluster. This is the "what to deploy" half of a provision/definition pair;
 environment-specific values (ingress hosts, credentials, EKS resource sizing) live in the
 sibling [`devtools-definition`](https://github.com/devops-tashtiot/devtools-definition)
 repo, and both are auto-discovered by an ArgoCD `ApplicationSet`. The cluster-infra
@@ -19,11 +19,14 @@ upstream chart under `charts/<subchart>/` (never a `.tgz`) via a `file://` depen
 | Tool | Upstream chart vendored |
 |---|---|
 | `argocd` | `argo-cd` |
-| `artifactory` | `artifactory` |
 | `bitbucket` | `bitbucket` |
 | `confluence` | `confluence` |
+| `devops-api` | `example-fast-api` (self-authored FastAPI DNS API, not a third-party product) |
+| `harbor` | `harbor` |
+| `jfrog-platform` | `jfrog-platform` (replaces the former separate `artifactory`/`xray` devtools) |
 | `jira` | `jira` |
-| `xray` | `xray` |
+| `sonarqube` | `sonarqube` |
+| `woodpecker` | `woodpecker` |
 
 ## Conventions
 
