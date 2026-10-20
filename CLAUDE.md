@@ -67,7 +67,9 @@ freehanding templates).
 `devtools/<tool>/`. `jfrog-platform` replaces the former separate `artifactory` and `xray`
 devtools — it vendors JFrog's own combined `jfrog-platform` chart, which deploys both
 Artifactory and Xray (plus optional catalog/distribution/worker, left disabled) as one Helm
-release instead of two independent ones. `devtools-definition/devtools/jfrog-platform/` must
+release instead of two independent ones. Artifactory runs as the free **JFrog Container
+Registry (JCR)** edition (Docker/OCI, Helm, Generic repos; no Maven/npm/PyPI, no Xray) — it
+was OSS before, which has no Docker repo type. `devtools-definition/devtools/jfrog-platform/` must
 carry a matching directory name for the ApplicationSet's `$definition` source reference to
 resolve.
 

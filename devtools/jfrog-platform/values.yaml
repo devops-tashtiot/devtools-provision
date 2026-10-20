@@ -5,8 +5,8 @@
 # which vendors Artifactory + Xray (+ optional catalog/distribution/worker,
 # all left disabled) as one Helm release instead of two independent ones.
 # Vendors jfrog-platform 11.6.5 (Artifactory 7.161.26, Xray 3.150.36), run
-# as Artifactory OSS with Xray disabled (see jfrog-platform.artifactory
-# below). Never vendor a platform chart whose Artifactory is older than the
+# as JFrog Container Registry (JCR) with Xray disabled (see
+# jfrog-platform.artifactory below). Never vendor a platform chart whose Artifactory is older than the
 # version its database was last migrated to — Artifactory refuses to start
 # against a newer schema. See
 # devtools/jfrog-platform/charts/jfrog-platform/README.md for the full
@@ -103,14 +103,16 @@ jfrog-platform:
     postgresql:
       enabled: false
 
-    # Artifactory OSS (free, no license) — the same overrides JFrog's own
-    # artifactory-oss chart (same artifactory subchart version) applies on
-    # top of the Pro one: OSS image plus the Pro-only services switched off.
+    # JFrog Container Registry (free, no license) — the same overrides JFrog's
+    # own artifactory-jcr chart (same artifactory subchart version) applies on
+    # top of the Pro one: JCR image plus the Pro-only services switched off.
     # Pro refused to start unlicensed ("Converter can't run since no matching
-    # license found"). OSS limits: no S3/cloud binary storage (blobs stay on
-    # the PVC), no Xray, no Access projects/permissions API.
+    # license found"); OSS ran before this but has no Docker repo type, which
+    # space-shuttle needs. JCR supports Docker/OCI, Helm and Generic repos —
+    # not Maven/npm/PyPI etc. Limits: no S3/cloud binary storage (blobs stay
+    # on the PVC), no Xray, no Access projects/permissions API.
     installer:
-      platform: art-oss-helm
+      platform: jcr-helm
     jfconnect:
       enabled: false
     jfmelt:
@@ -164,10 +166,10 @@ jfrog-platform:
 
       image:
         registry: releases-docker.jfrog.io
-        repository: jfrog/artifactory-oss
+        repository: jfrog/artifactory-jcr
 
       persistence:
-        # Binary blob storage backend. OSS only supports "file-system" —
+        # Binary blob storage backend. JCR only supports "file-system" —
         # blobs, etc, work and logs all live on this PVC (S3 backends are
         # Pro-only).
         type: file-system
@@ -206,7 +208,7 @@ jfrog-platform:
       customInitContainersBegin: ""
 
   # Disabled: Xray needs a licensed (Pro X+) Artifactory to federate with and
-  # can't run against OSS. The values below are kept for re-enabling it.
+  # can't run against JCR. The values below are kept for re-enabling it.
   xray:
     enabled: false
     postgresql:
