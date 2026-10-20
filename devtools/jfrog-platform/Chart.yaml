@@ -1,6 +1,6 @@
 apiVersion: v2
 name: jfrog-platform
-description: JFrog Platform (Artifactory 7.161.26 + Xray 3.150.36)
+description: JFrog Artifactory OSS 7.161.26 (jfrog-platform chart, Xray disabled)
 type: application
 version: 1.0.0
 appVersion: "7.161.26"

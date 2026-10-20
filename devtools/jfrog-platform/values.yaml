@@ -4,10 +4,11 @@
 # devtools/xray) into JFrog's own combined "jfrog-platform" umbrella chart,
 # which vendors Artifactory + Xray (+ optional catalog/distribution/worker,
 # all left disabled) as one Helm release instead of two independent ones.
-# Vendors jfrog-platform 11.6.5 (Artifactory 7.161.26, Xray 3.150.36). Never
-# vendor a platform chart whose Artifactory is older than the version the
-# shared RDS "artifactory" database was last migrated to (7.161.x) —
-# Artifactory refuses to start against a newer schema. See
+# Vendors jfrog-platform 11.6.5 (Artifactory 7.161.26, Xray 3.150.36), run
+# as Artifactory OSS with Xray disabled (see jfrog-platform.artifactory
+# below). Never vendor a platform chart whose Artifactory is older than the
+# version its database was last migrated to — Artifactory refuses to start
+# against a newer schema. See
 # devtools/jfrog-platform/charts/jfrog-platform/README.md for the full
 # upstream values reference.
 #
@@ -82,16 +83,14 @@ jfrog-platform:
   preUpgradeHook:
     enabled: false
 
-  # Shared platform-wide RabbitMQ — Xray's broker. This is the platform
-  # chart's intended layout: its own values set xray.rabbitmq.enabled: false
-  # plus xray.rabbitmq.external.secrets pointing at the
-  # <release>-xray-rabbitmq-creds Secret rendered from this broker's auth.
-  # Flipping that around (Xray's bundled broker on, this one off) leaves the
-  # external.secrets wiring in place, so neither the bundled broker's
-  # <release>-load-definition Secret nor the creds Secret is ever rendered
-  # and the RabbitMQ pod hangs in Init on a missing volume.
+  # Shared platform-wide RabbitMQ — only Xray's broker, so off along with
+  # Xray (see xray.enabled below). If Xray is ever re-enabled, turn this back
+  # on rather than Xray's bundled broker: the platform chart's own values
+  # wire Xray to this one (xray.rabbitmq.external.secrets ->
+  # <release>-xray-rabbitmq-creds), and flipping that around leaves neither
+  # the load-definition nor the creds Secret rendered.
   rabbitmq:
-    enabled: true
+    enabled: false
 
   # Shared bundled Postgres, used only if global.database points nowhere
   # else — disabled since every product below points at the shared RDS
@@ -102,6 +101,31 @@ jfrog-platform:
   artifactory:
     enabled: true
     postgresql:
+      enabled: false
+
+    # Artifactory OSS (free, no license) — the same overrides JFrog's own
+    # artifactory-oss chart (same artifactory subchart version) applies on
+    # top of the Pro one: OSS image plus the Pro-only services switched off.
+    # Pro refused to start unlicensed ("Converter can't run since no matching
+    # license found"). OSS limits: no S3/cloud binary storage (blobs stay on
+    # the PVC), no Xray, no Access projects/permissions API.
+    installer:
+      platform: art-oss-helm
+    jfconnect:
+      enabled: false
+    jfmelt:
+      enabled: false
+    rtfs:
+      enabled: false
+    onemodel:
+      enabled: false
+    evidence:
+      enabled: false
+    apptrust:
+      enabled: false
+    unifiedpolicy:
+      enabled: false
+    platformfederation:
       enabled: false
 
     database:
@@ -138,14 +162,16 @@ jfrog-platform:
     artifactory:
       replicaCount: 1
 
+      image:
+        registry: releases-docker.jfrog.io
+        repository: jfrog/artifactory-oss
+
       persistence:
-        # Binary blob storage backend — "file-system" keeps blobs on the
-        # local PVC below; set to "s3-storage-v3-direct" in
-        # devtools-definition to store blobs in S3 instead (etc/work/logs
-        # still live on this PVC either way — persistence.type only
-        # controls blob storage).
+        # Binary blob storage backend. OSS only supports "file-system" —
+        # blobs, etc, work and logs all live on this PVC (S3 backends are
+        # Pro-only).
         type: file-system
-        size: 20Gi
+        size: 50Gi
         storageClassName: gp2
         awsS3V3:
           useInstanceCredentials: true
@@ -179,8 +205,10 @@ jfrog-platform:
       # artifactory subchart reads .Values.artifactory.customInitContainersBegin.
       customInitContainersBegin: ""
 
+  # Disabled: Xray needs a licensed (Pro X+) Artifactory to federate with and
+  # can't run against OSS. The values below are kept for re-enabling it.
   xray:
-    enabled: true
+    enabled: false
     postgresql:
       enabled: false
     # Uses the shared top-level `rabbitmq:` above (platform chart default) —
