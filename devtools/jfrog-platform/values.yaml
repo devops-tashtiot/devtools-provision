@@ -82,14 +82,16 @@ jfrog-platform:
   preUpgradeHook:
     enabled: false
 
-  # Shared platform-wide RabbitMQ (used when a product's own
-  # "<product>.rabbitmq.enabled" is left false, so it uses this one instead)
-  # — disabled here since Xray keeps its own bundled RabbitMQ (see
-  # xray.rabbitmq.enabled below), same as the old standalone xray chart.
-  # Nothing else in this release needs a broker, so this would otherwise be
-  # a second, unused RabbitMQ pod.
+  # Shared platform-wide RabbitMQ — Xray's broker. This is the platform
+  # chart's intended layout: its own values set xray.rabbitmq.enabled: false
+  # plus xray.rabbitmq.external.secrets pointing at the
+  # <release>-xray-rabbitmq-creds Secret rendered from this broker's auth.
+  # Flipping that around (Xray's bundled broker on, this one off) leaves the
+  # external.secrets wiring in place, so neither the bundled broker's
+  # <release>-load-definition Secret nor the creds Secret is ever rendered
+  # and the RabbitMQ pod hangs in Init on a missing volume.
   rabbitmq:
-    enabled: false
+    enabled: true
 
   # Shared bundled Postgres, used only if global.database points nowhere
   # else — disabled since every product below points at the shared RDS
@@ -181,13 +183,10 @@ jfrog-platform:
     enabled: true
     postgresql:
       enabled: false
-    # Keep Xray's own bundled RabbitMQ instance (overrides this chart's own
-    # default of false, which would instead point Xray at the shared
-    # top-level `rabbitmq:` above — left disabled since nothing else needs
-    # it). Same behavior as the old standalone xray chart, which always
-    # used its own bundled broker.
+    # Uses the shared top-level `rabbitmq:` above (platform chart default) —
+    # not Xray's own bundled broker.
     rabbitmq:
-      enabled: true
+      enabled: false
 
     database:
       secrets:
