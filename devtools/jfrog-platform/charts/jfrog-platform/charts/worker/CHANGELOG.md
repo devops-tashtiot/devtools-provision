@@ -1,8 +1,21 @@
 # JFrog Worker Chart Changelog
 All changes to this chart will be documented in this file
 
-## [101.153.0] - Apr 17, 2025
-* Updated ubi-minimal version to 9.5.1742914212
+## [101.216.0] - Jul 8, 2026
+* Updated paths to reflect changes in the docker image
+
+## [101.203.0] - Apr 21, 2026
+* KEDA `ScaledObject`: optional `autoscaling.targetCPUContainerName` sets the KEDA CPU trigger `containerName` (per-container `ContainerResource` metrics). When empty, CPU scaling uses pod-level aggregate vs requests.
+
+## [101.177.0] - Dec 16, 2025
+* Upgrade Observability version to 2.x
+* **Breaking changes**
+* Change securityContext to containerSecurityContext in values.yaml
+  * Key was renamed to unify with other charts
+  * If you have customized securityContext in your values.yaml, make sure to rename the key to containerSecurityContext
+
+## [101.137.0] - Apr 17, 2025
+* Updated ubi-minimal version to 9.6.1758184547
 
 ## [101.128.0] - Feb 24, 2025
 * Update required services in router configuration

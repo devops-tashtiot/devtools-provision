@@ -17,18 +17,6 @@ postgresql:
     persistence:
       enabled: false
 
-redis:
-  password: "password"
-  persistence:
-    enabled: true
-  resources:
-    requests:
-      memory: "512Mi"
-      cpu: "1"
-    limits:
-      memory: "1Gi"
-      cpu: "1"
-
 distribution:
   jfrogUrl: http://artifactory.rt:8082
   unifiedSecretInstallation: false
@@ -48,10 +36,10 @@ distribution:
   lifecycle:
     postStart:
       exec:
-        command: ["/bin/sh", "-c", "echo Hello from the distribution postStart handler >> /tmp/message"]
+        command: ["/bin/bash", "-c", "echo Hello from the distribution postStart handler >> /tmp/message"]
     preStop:
       exec:
-        command: ["/bin/sh", "-c", "echo Hello from the distribution postStart handler >> /tmp/message"]
+        command: ["/bin/bash", "-c", "echo Hello from the distribution postStart handler >> /tmp/message"]
   javaOpts:
     xms: "1g"
     xmx: "3g"
@@ -129,10 +117,10 @@ router:
   lifecycle:
     postStart:
       exec:
-        command: ["/bin/sh", "-c", "echo Hello from the router postStart handler >> /tmp/message"]
+        command: ["/bin/bash", "-c", "echo Hello from the router postStart handler >> /tmp/message"]
     preStop:
       exec:
-        command: ["/bin/sh", "-c", "echo Hello from the router postStart handler >> /tmp/message"]
+        command: ["/bin/bash", "-c", "echo Hello from the router postStart handler >> /tmp/message"]
 
 observability:
   resources:
@@ -146,7 +134,7 @@ observability:
   lifecycle:
     postStart:
       exec:
-        command: ["/bin/sh", "-c", "echo Hello from the observability postStart handler >> /tmp/message"]
+        command: ["/bin/bash", "-c", "echo Hello from the observability postStart handler >> /tmp/message"]
     preStop:
       exec:
-        command: ["/bin/sh", "-c", "echo Hello from the observability postStart handler >> /tmp/message"]
+        command: ["/bin/bash", "-c", "echo Hello from the observability postStart handler >> /tmp/message"]

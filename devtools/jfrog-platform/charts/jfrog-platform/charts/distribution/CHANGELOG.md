@@ -1,7 +1,34 @@
 # JFrog Distribution Chart Changelog
 All changes to this project chart be documented in this file.
 
-## [102.33.2] - Jul 16, 2025
+## [102.89.0] - Jul 21, 2026
+* Upgraded postgres image tag version to `17.10-helm-20260716`
+
+## [102.41.0] - Jun 11, 2026
+* Switch initContainer image from ubi-minimal to jfrog/echo-mini
+* Run container shell scripts (observability container command and logger sidecars) with `/bin/bash` instead of `/bin/sh`, since the new echo images are Debian-based (`/bin/sh` is dash) and these scripts use bash-only syntax
+
+## [102.37.0] - Mar 20, 2026
+* Upgrade postgres image version to `17.10` (`17.10-helm`)
+* Migrate bundled postgres image from `bitnami/postgresql` to `echohq/postgres`
+* Removed Redis - no longer part of Distribution and updated readme
+
+## [102.35.0] - Dec 02, 2025
+* Added support for the environment variable `JF_SHARED_NODE_POD_IP`. Its value will be used for `shared.node.ip` if a specific `shared.node.ip` is not provided
+
+## [102.34.0] - Sep 22, 2025
+* **Important changes**
+* Added min kubeVersion ">= 1.21.0-0" in chart.yaml
+* Upgrade postgres chart version to `16.7.26`
+* Upgrade postgres image to `17.6.0-debian-12-r2`
+* Added `global.security.allowInsecureImages=true` Enables skipping image verification (applies only to Bitnami chart images)
+* Added image digest support for the distribution chart. This can also be configured at the global level using `global.digests`
+* Added image digest support for the distribution chart. This can also be configured at the global level using `global.digests`
+* Added support for `global.verisons.observability` and `global.verisons.redis`
+* Added support for `global.digests`
+* Fix a newline issue with customSecrets [GH-2036](https://github.com/jfrog/charts/issues/2036)
+
+## [102.32.0] - Jul 16, 2025
 * Improved `distribution.extraEnvironmentVariables` to support Pod fields as values [GH-1814](https://github.com/jfrog/charts/issues/1814)
 
 ## [102.30.0] - Mar 27, 2025

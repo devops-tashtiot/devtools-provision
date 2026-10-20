@@ -4,6 +4,9 @@
 ## Access the values with {{ .Values.key.subkey }}
 
 global:
+  # Allows skipping image verification, applicable to bitnami chart images only
+  security:
+    allowInsecureImages: true
   # imageRegistry:
   # imagePullSecrets:
   #   - myRegistryKeySecretName
@@ -13,6 +16,13 @@ global:
   # distribution:
   # router:
   # initContainers:
+  # observability:
+  digests: {}
+  # distribution:
+  # router:
+  # initContainers:
+  # observability:
+
   # jfrogUrl:
   # joinKey:
   # masterKey:
@@ -49,8 +59,9 @@ logging:
 initContainers:
   image:
     registry: releases-docker.jfrog.io
-    repository: ubi9/ubi-minimal
-    tag: 9.6.1754584681
+    repository: jfrog/echo-mini
+    tag: "20260810"
+    # digest:
     pullPolicy: IfNotPresent
   resources:
     requests:
@@ -59,6 +70,13 @@ initContainers:
     limits:
       memory: "1Gi"
       cpu: "1"
+## Upgrade hook - used for pre-upgrade job to delete StatefulSet with cascade orphan
+upgradeHook:
+  image:
+    registry: releases-docker.jfrog.io
+    repository: bitnami/kubectl
+    tag: 1.33.1
+    pullPolicy: IfNotPresent
 ## For supporting pulling from private registries
 imagePullSecrets:
 # - myRegistryKeySecretName
@@ -96,6 +114,13 @@ rbac:
           - get
           - watch
           - list
+      - apiGroups:
+          - "apps"
+        resources:
+          - statefulsets
+        verbs:
+          - delete
+          - watch
 networkpolicy: []
 ## Allows all ingress and egress
 # - name: distribution
@@ -111,16 +136,6 @@ networkpolicy: []
 #   podSelector:
 #     matchLabels:
 #       app: postgresql
-#   ingress:
-#   - from:
-#     - podSelector:
-#         matchLabels:
-#           app: distribution
-## Uncomment to allow only distribution pods to communicate with redis
-# - name: redis
-#   podSelector:
-#     matchLabels:
-#       app: redis
 #   ingress:
 #   - from:
 #     - podSelector:
@@ -174,8 +189,9 @@ postgresql:
   enabled: true
   image:
     registry: releases-docker.jfrog.io
-    repository: bitnami/postgresql
-    tag: 16.6.0-debian-12-r2
+    repository: echohq/postgres
+    tag: 17.10-helm-20260716
+    # digest:
   auth:
     username: "distribution"
     password: ""
@@ -232,45 +248,6 @@ database:
   # url:
   #   name: "dis-database-creds"
   #   key: "db-url"
-## Configuration values for the redis dependency
-## ref: https://github.com/helm/charts/blob/master/stable/redis/README.md
-##
-redis:
-  image:
-    registry: releases-docker.jfrog.io
-    repository: bitnami/redis
-    tag: 7.4.1-debian-12-r3
-    pullPolicy: IfNotPresent
-  port: 6379
-  password: ""
-  ## Alternatively, you can use a pre-existing secret with a key called redis-password by specifying existingSecret
-  # existingSecret: <name-of-existing-secret>
-  disableCommands: "FLUSHDB,FLUSHALL"
-  persistence:
-    enabled: true
-    path: /bitnami/redis/data
-    size: 10Gi
-    ## A manually managed Persistent Volume and Claim
-    ## Requires redis.persistence.enabled: true
-    ## If defined, PVC must be created manually before volume will be bound
-    # existingClaim:
-    accessMode: ReadWriteOnce
-  ## Disable containerSecurityContext for openshift
-  containerSecurityContext:
-    enabled: true
-    runAsUser: 1001
-    runAsGroup: 0
-  resources: {}
-  # requests:
-  #   memory: "256Mi"
-  #   cpu: "100m"
-  # limits:
-  #   memory: "2Gi"
-  #   cpu: "250m"
-
-  nodeSelector: {}
-  tolerations: []
-  affinity: {}
 common:
   ## Spread Distribution pods evenly across your nodes or some other topology
   topologySpreadConstraints: []
@@ -314,7 +291,7 @@ common:
     #       drop:
     #         - NET_RAW
     #   command:
-    #     - 'sh'
+    #     - 'bash'
     #     - '-c'
     #     - 'touch {{ .Values.distribution.persistence.mountPath }}/example-custom-setup'
     #   volumeMounts:
@@ -332,7 +309,7 @@ common:
     #       drop:
     #         - NET_RAW
     #   command:
-    #     - 'sh'
+    #     - 'bash'
     #     - '-c'
     #     - 'curl -o {{ .Values.distribution.persistence.mountPath }}/etc/system.yaml https://<repo-url>/systemyaml'
     #   volumeMounts:
@@ -351,9 +328,9 @@ common:
     #       drop:
     #         - NET_RAW
     #   command:
-    #     - 'sh'
+    #     - 'bash'
     #     - '-c'
-    #     - 'sh /scripts/script.sh'
+    #     - 'bash /scripts/script.sh'
     #   volumeMounts:
     #     - mountPath: "{{ .Values.distribution.persistence.mountPath }}"
     #       name: volume
@@ -374,6 +351,7 @@ distribution:
     registry: releases-docker.jfrog.io
     repository: jfrog/distribution-distribution
     # tag:
+    # digest:
     pullPolicy: IfNotPresent
   ## unifiedSecretInstallation flag enables single unified secret holding all the distribution internal(chart) secrets, It won't be affecting external secrets.
   ## Note: unifiedSecretInstallation flag is enabled by true by default from chart version 102.23.0, Users can switch to false to continue with the old way of secret creation.
@@ -396,10 +374,10 @@ distribution:
   lifecycle: {}
   # postStart:
   #   exec:
-  #     command: ["/bin/sh", "-c", "echo Hello from the postStart handler > /usr/share/message"]
+  #     command: ["/bin/bash", "-c", "echo Hello from the postStart handler > /usr/share/message"]
   # preStop:
   #   exec:
-  #     command: ["/bin/sh", "-c", "echo Hello from the preStart handler > /usr/share/message"]
+  #     command: ["/bin/bash", "-c", "echo Hello from the preStart handler > /usr/share/message"]
 
   internalPort: 8080
   externalPort: 80
@@ -482,7 +460,6 @@ distribution:
   #   key: custom-secret2.config
   #   data: |
   #     here the custom secret 2 config
-
   resources: {}
   # requests:
   #   memory: "2Gi"
@@ -581,7 +558,8 @@ router:
   image:
     registry: releases-docker.jfrog.io
     repository: jfrog/router
-    tag: 7.179.1
+    tag: 7.729.32
+    # digest:
     pullPolicy: IfNotPresent
   serviceRegistry:
     ## Service registry (Access) TLS verification skipped if enabled
@@ -601,10 +579,10 @@ router:
   lifecycle: {}
   # postStart:
   #   exec:
-  #     command: ["/bin/sh", "-c", "echo Hello from the router postStart handler > /usr/share/message"]
+  #     command: ["/bin/bash", "-c", "echo Hello from the router postStart handler > /usr/share/message"]
   # preStop:
   #   exec:
-  #     command: ["/bin/sh", "-c", "echo Hello from the router preStart handler > /usr/share/message"]
+  #     command: ["/bin/bash", "-c", "echo Hello from the router preStart handler > /usr/share/message"]
 
   ## Add custom volumesMounts
   customVolumeMounts: |
@@ -662,7 +640,8 @@ observability:
   image:
     registry: releases-docker.jfrog.io
     repository: jfrog/observability
-    tag: 2.13.0
+    tag: 2.56.0
+    # digest:
     pullPolicy: IfNotPresent
   internalPort: 8036
   resources: {}
@@ -677,10 +656,10 @@ observability:
   lifecycle: {}
   # postStart:
   #   exec:
-  #     command: ["/bin/sh", "-c", "echo Hello from the observability postStart handler > /usr/share/message"]
+  #     command: ["/bin/bash", "-c", "echo Hello from the observability postStart handler > /usr/share/message"]
   # preStop:
   #   exec:
-  #     command: ["/bin/sh", "-c", "echo Hello from the observability preStart handler > /usr/share/message"]
+  #     command: ["/bin/bash", "-c", "echo Hello from the observability preStart handler > /usr/share/message"]
 
   livenessProbe:
     enabled: true
@@ -720,6 +699,7 @@ filebeat:
   image:
     repository: docker.elastic.co/beats/filebeat
     version: 7.16.2
+    # digest:
   logstashUrl: "logstash:5044"
   terminationGracePeriod: 10
   livenessProbe:

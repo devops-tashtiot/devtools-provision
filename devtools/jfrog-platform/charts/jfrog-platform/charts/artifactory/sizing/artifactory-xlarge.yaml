@@ -3,6 +3,8 @@
 # This size is intended for very large organizations. It can be increased with adding replicas
 # [WARNING] Some of the configuration mentioned in this file are taken inside system.yaml
 # hence this configuration will be overridden when enabling systemYamlOverride
+# [NOTE] Each 'autoscaling.maxReplicas' below matches the 'replicaCount' of this profile, so
+# enabling autoscaling never caps a workload below the size this profile is meant to run at
 ##############################################################################################
 splitServicesToContainers: true
 artifactory:
@@ -46,8 +48,9 @@ artifactory:
   extraEnvironmentVariables:
     - name: MALLOC_ARENA_MAX
       value: "16"
-    - name: SKIP_WAIT_FOR_EXTERNAL_DB
-      value: "true"
+
+autoscaling:
+  maxReplicas: 4
 
 access:
   tomcat:
@@ -69,9 +72,6 @@ access:
   extraEnvironmentVariables:
     - name: MALLOC_ARENA_MAX
       value: "16"
-    - name: SKIP_WAIT_FOR_EXTERNAL_DB
-      value: "true"
-
 
 router:
   resources:
@@ -83,13 +83,16 @@ router:
       memory: 2Gi
 
 frontend:
+  replicaCount: 4
+  autoscaling:
+    maxReplicas: 4
   resources:
     requests:
-      cpu: 200m
-      memory: 300Mi
+      cpu: "1"
+      memory: 1Gi
     limits:
       # cpu: "3"
-      memory: 1Gi
+      memory: 2Gi
 
 metadata:
   database:
@@ -204,6 +207,9 @@ evidence:
       memory: 1Gi
 
 rtfs:
+  replicaCount: 4
+  autoscaling:
+    maxReplicas: 4
   resources:
     requests:
       cpu: 500m
@@ -211,3 +217,75 @@ rtfs:
     limits:
       # cpu: "2"
       memory: 3500Mi
+
+jfbus:
+  replicaCount: 4
+  autoscaling:
+    maxReplicas: 4
+  resources:
+    requests:
+      cpu: 500m
+      memory: 3500Mi
+    limits:
+      # cpu: "2"
+      memory: 3500Mi
+
+jfmelt:
+  replicaCount: 4
+  autoscaling:
+    maxReplicas: 4
+  resources:
+    requests:
+      cpu: 500m
+      memory: 500Mi
+    limits:
+      # cpu: "2"
+      memory: 1Gi
+
+platformfederation:
+  replicaCount: 4
+  autoscaling:
+    maxReplicas: 4
+  resources:
+    requests:
+      cpu: 250m
+      memory: 200Mi
+    limits:
+      # cpu: "4"
+      memory: 2Gi
+
+apptrust:
+  replicaCount: 4
+  autoscaling:
+    maxReplicas: 4
+  resources:
+    requests:
+      cpu: 2
+      memory: 1Gi
+    limits:
+      # cpu: "4"
+      memory: 2Gi
+
+unifiedpolicy:
+  replicaCount: 4
+  autoscaling:
+    maxReplicas: 4
+  resources:
+    requests:
+      cpu: 2
+      memory: 1Gi
+    limits:
+      # cpu: "4"
+      memory: 2Gi
+
+evaluation:
+  replicaCount: 4
+  autoscaling:
+    maxReplicas: 4
+  resources:
+    requests:
+      cpu: 2
+      memory: 1Gi
+    limits:
+      # cpu: "4"
+      memory: 2Gi

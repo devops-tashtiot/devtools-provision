@@ -20,10 +20,11 @@ maxRetries=5
 
 # Waiting for all pods to be in a running state
 for (( retryCount=0; retryCount<maxRetries; retryCount++ )); do
-podStatuses=$(kubectl get pods -l 'app.kubernetes.io/name={{ template "rabbitmq.name" . }},app.kubernetes.io/instance={{ .Release.Name }}' -o json | jq '[.items[].status.phase]')
-podStatuses=($(echo "$podStatuses" | jq -r '.[]'))
+podStatusList=$(kubectl get pods -l "app.kubernetes.io/name={{ template "rabbitmq.name" . }},app.kubernetes.io/instance={{ .Release.Name }}" \
+    -o jsonpath='{range .items[*]}{.status.phase}{"\n"}{end}')
 
-numPods=${#podStatuses[@]}
+
+numPods=$(printf '%s' "$podStatusList" | awk 'NF{c++} END{print c+0}')
 if [ "$numPods" -ne "$replicaCount" ]; then
     echo "Not all pods are scheduled. Retrying in 30 seconds..."
     sleep 30
@@ -31,12 +32,13 @@ if [ "$numPods" -ne "$replicaCount" ]; then
 fi
 
 allRunning=true
-for status in "${podStatuses[@]}"; do
-    if [[ "$status" != "Running" ]]; then
+while IFS= read -r podPhase; do
+    [ -z "$podPhase" ] && continue
+    if [ "$podPhase" != "Running" ]; then
     allRunning=false
     break
     fi
-done
+done <<< "$podStatusList"
 
 if $allRunning; then
     echo "All pods are running. Exiting loop."
@@ -72,7 +74,11 @@ fi
 
 # Waiting for RabbitMQ server to start running in all expected replicas and be a part of the cluster.
 for (( retryCount=0; retryCount<maxRetries; retryCount++ )); do
-runningNodeCount=$(kubectl exec -i $rabbitMqZeroPodName -n {{ .Release.Namespace }} -c rabbitmq -- bash -c "rabbitmqctl cluster_status --formatter=json" | jq .running_nodes | jq '. | length')
+runningNodeCount=$(kubectl exec -i $rabbitMqZeroPodName -n {{ .Release.Namespace }} -c rabbitmq -- bash -c "rabbitmqctl cluster_status --formatter=json" \
+    | tr -d '\n' \
+    | sed 's/.*"running_nodes":\[\([^]]*\)\].*/\1/' \
+    | awk -F',' '{if ($0=="") print 0; else print NF}')
+
 
 if [ "$replicaCount" -eq "$runningNodeCount" ]; then
     echo "RabbitMQ server running on expected number of replicas"
@@ -90,14 +96,14 @@ fi
 
 # Getting the queues which are not replicated across all nodes
 for (( retryCount=0; retryCount<maxRetries; retryCount++ )); do
-queuesInfo=$(kubectl exec -i $rabbitMqZeroPodName -n {{ .Release.Namespace }} -c rabbitmq -- bash -c "rabbitmqctl list_queues name,members --vhost={{ .Values.global.xray.rabbitmq.haQuorum.vhost }} --formatter=json")
+queuesInfo=$(kubectl exec -i $rabbitMqZeroPodName -n {{ .Release.Namespace }} -c rabbitmq -- bash -c "rabbitmqctl list_queues name,members,type --vhost={{ .Values.global.xray.rabbitmq.haQuorum.vhost }}")
 if [ $? -ne 0 ]; then
     echo "Failed to exec rabbitmqctl command to get minimum member count for queues. Retrying in 30 seconds..."
     sleep 30
     continue
 fi
 
-minMemberCount=$(echo $queuesInfo | jq '[.[] | select(.name != "aliveness-test") | .members | length] | min')
+minMemberCount=$(echo "$queuesInfo" | grep 'quorum$' | grep -o '\[[^]]*\]' | awk '{n = gsub(/,/, "") + 1; if (min == "" || n < min) min = n} END {if (min == "") print "null"; else print min}')
 # queuesInfo can return an empty array if rabbitmq is not started yet
 # In that case minMemberCount will be null. This handles that scenario
 if [[ "$minMemberCount" -eq "null" ]]; then
@@ -121,7 +127,11 @@ exit 0
 fi
 
 echo "Need to grow the queues as minimum replica count for queues is $minMemberCount"
-
+kubectl rollout status statefulsets/{{ .Release.Name }}-{{ template "rabbitmq.name" . }}
+if [ $? -ne 0 ]; then
+echo "StatefulSet rollout did not complete successfully. Aborting queue growth."
+exit 1
+fi
 for ((i = $minMemberCount + 1; i <= runningNodeCount && i <= 3; i++)); do
 echo "Growing node rabbit@{{ .Release.Name }}-{{ template "rabbitmq.name" . }}-$(($i-1))"
 

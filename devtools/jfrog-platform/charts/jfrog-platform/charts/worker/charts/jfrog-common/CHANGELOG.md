@@ -1,6 +1,9 @@
 # JFrog common Chart Changelog
 All changes to this chart will be documented in this file
 
+## [0.0.9] - Mar 12, 2026
+* Added support for `common.resources`
+
 ## [0.0.8] - Jul 18, 2024
 * Added compatibility support for securityContext in Openshift
 * Added support for global versions in `common.images.global.image`

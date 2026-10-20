@@ -47,8 +47,6 @@ artifactory:
     extraEnvironmentVariables:
       - name: MALLOC_ARENA_MAX
         value: "2"
-      - name: SKIP_WAIT_FOR_EXTERNAL_DB
-        value: "true"
   
   access:
     tomcat:
@@ -70,8 +68,6 @@ artifactory:
     extraEnvironmentVariables:
       - name: MALLOC_ARENA_MAX
         value: "2"
-      - name: SKIP_WAIT_FOR_EXTERNAL_DB
-        value: "true"
   
   router:
     resources:
@@ -83,13 +79,14 @@ artifactory:
         memory: 1Gi
   
   frontend:
+    replicaCount: 1
     resources:
       requests:
         cpu: 100m
-        memory: 150Mi
+        memory: 250Mi
       limits:
         # cpu: "2"
-        memory: 250Mi
+        memory: 500Mi
   
   metadata:
     database:
@@ -204,6 +201,7 @@ artifactory:
         memory: 1Gi
   
   rtfs:
+    replicaCount: 1
     resources:
       requests:
         cpu: 500m
@@ -211,23 +209,79 @@ artifactory:
       limits:
         # cpu: "2"
         memory: 3500Mi
+  
+  jfbus:
+    replicaCount: 1
+    resources:
+      requests:
+        cpu: 500m
+        memory: 3500Mi
+      limits:
+        # cpu: "2"
+        memory: 3500Mi
+  
+  jfmelt:
+    replicaCount: 1
+    resources:
+      requests:
+        cpu: 500m
+        memory: 500Mi
+      limits:
+        # cpu: "2"
+        memory: 1Gi
+  
+  platformfederation:
+    replicaCount: 1
+    resources:
+      requests:
+        cpu: 125m
+        memory: 120Mi
+      limits:
+        # cpu: "2"
+        memory: 1Gi
+  
+  apptrust:
+    replicaCount: 1
+    resources:
+      requests:
+        cpu: 300m
+        memory: 150Mi
+      limits:
+        # cpu: "2"
+        memory: 500Mi
+  
+  unifiedpolicy:
+    replicaCount: 1
+    resources:
+      requests:
+        cpu: 300m
+        memory: 150Mi
+      limits:
+        # cpu: "2"
+        memory: 500Mi
+  
+  evaluation:
+    replicaCount: 1
+    resources:
+      requests:
+        cpu: 300m
+        memory: 150Mi
+      limits:
+        # cpu: "2"
+        memory: 500Mi
 xray:
   ##############################################################
   # The small sizing
   # This is the size recommended for running Xray for small teams
   ##############################################################
   
-  replicaCount: 1
+  # For autoscaling, refer to the KEDA HPA example:
+  # https://github.com/jfrog/charts/tree/master/examples/xray/xray-with-keda-hpa
+  # If KEDA cannot be installed in your cluster, a static replicaCount (as set below) is recommended.
+  replicaCount: 2
   databaseUpgradeReady: true
   waitForDatabase: true
   unifiedUpgradeAllowed: true
-  
-  autoscaling:
-    enabled: true
-    minReplicas: 1
-    maxReplicas: 3
-    targetCPUUtilizationPercentage: 200
-    targetMemoryUtilizationPercentage: 800
   
   xray:
     podAntiAffinity:
@@ -238,7 +292,7 @@ xray:
   analysis:
     resources:
       requests:
-        cpu: "100m"
+        cpu: "60m"
         memory: 250Mi
       limits:
         # cpu: "4"
@@ -248,7 +302,7 @@ xray:
     resources:
       requests:
         cpu: "300m"
-        memory: 550Mi
+        memory: 1Gi
       limits:
         # cpu: "6"
         memory: 8Gi
@@ -256,7 +310,7 @@ xray:
   persist:
     resources:
       requests:
-        cpu: "100m"
+        cpu: "60m"
         memory: 250Mi
       limits:
         # cpu: "4"
@@ -265,7 +319,7 @@ xray:
   server:
     resources:
       requests:
-        cpu: "300m"
+        cpu: "180m"
         memory: 500Mi
       limits:
         # cpu: "4"
@@ -277,31 +331,21 @@ xray:
         cpu: "60m"
         memory: 100Mi
       limits:
-        # cpu: "1"
+        # cpu: "3"
         memory: 1Gi
   
   observability:
     resources:
       requests:
-        cpu: "10m"
+        cpu: "5m"
         memory: 25Mi
       limits:
-        # cpu: "1"
+        # cpu: "850m"
         memory: 250Mi
-  
-  panoramic:
-    resources:
-      requests:
-        cpu: "100m"
-        memory: 250Mi
-      limits:
-        # cpu: "4"
-        memory: 8Gi
-  
   sbom:
     resources:
       requests:
-        cpu: "100m"
+        cpu: "60m"
         memory: 250Mi
       limits:
         # cpu: "4"
@@ -315,6 +359,60 @@ xray:
       limits:
         memory: "8Gi"
         # cpu: "4"
+  
+  aiscanner:
+    resources:
+      requests:
+        cpu: "30m"
+        memory: 100Mi
+      limits:
+        # cpu: "2"
+        memory: 4Gi
+  
+  curation:
+    resources:
+      requests:
+        cpu: "180m"
+        memory: 500Mi
+      limits:
+        # cpu: "4"
+        memory: 6Gi
+  
+  jascontextual:
+    resources:
+      requests:
+        cpu: "1.5"
+        memory: 4Gi
+      limits:
+        # cpu: "3.0"
+        memory: 16Gi
+  
+  jasexposures:
+    resources:
+      requests:
+        cpu: "1.5"
+        memory: 4Gi
+      limits:
+        # cpu: "3.0"
+        memory: 16Gi
+  
+  reporting:
+    resources:
+      requests:
+        cpu: "180m"
+        memory: 500Mi
+      limits:
+        # cpu: "4"
+        memory: 6Gi
+  
+  initContainers:
+    resources:
+      requests:
+        memory: "50Mi"
+        cpu: "12m"
+      limits:
+        memory: "1Gi"
+        cpu: "250m"
   
   # PostgreSQL
   ## Configuration values for the postgresql dependency
@@ -346,29 +444,90 @@ xray:
                       - xray
               topologyKey: kubernetes.io/hostname
   
-  rabbitmq:
-    extraConfiguration: |-
-      vm_memory_high_watermark.absolute = 2G
-      {{- if not .Values.global.xray.rabbitmq.haQuorum.enabled }}
-      raft.wal_max_size_bytes = 1048576
-      {{- end }}
+  catalog:
     resources:
       requests:
-        cpu: "50m"
-        memory: 300Mi
+        cpu: "2"
+        memory: 4Gi
       limits:
-        # cpu: "2"
-        memory: 3Gi
-    affinity:
-      podAntiAffinity:
-        requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchExpressions:
-                - key: app
-                  operator: In
-                  values:
-                    - xray
-            topologyKey: kubernetes.io/hostname
+        # cpu: "4"
+        memory: 8Gi
+    initContainers:
+      resources:
+        requests:
+          memory: "50Mi"
+          cpu: "12m"
+        limits:
+          memory: "1Gi"
+          cpu: "250m"
+    router:
+      resources:
+        requests:
+          cpu: "60m"
+          memory: 100Mi
+        limits:
+          # cpu: "3"
+          memory: 1Gi
+  
+  valkey:
+    primary:
+      resources:
+        requests:
+          cpu: "1"
+          memory: 2Gi
+        limits:
+          # cpu: "2"
+          memory: 4Gi
+      ## Bound the cache below limits.memory so Valkey evicts instead of being
+      ## OOMKilled. The headroom covers fork() copy-on-write during AOF rewrite,
+      ## replication buffers and allocator fragmentation.
+      ## Applied when sentinel.enabled=false; keep in sync with limits.memory.
+      configuration: |-
+        maxmemory 2gb
+        maxmemory-policy allkeys-lru
+    replica:
+      resources:
+        requests:
+          cpu: "1"
+          memory: 2Gi
+        limits:
+          # cpu: "2"
+          memory: 4Gi
+      ## With sentinel.enabled=true (the default) every node runs from this
+      ## block, so this is the setting that actually takes effect.
+      configuration: |-
+        maxmemory 2gb
+        maxmemory-policy allkeys-lru
+    sentinel:
+      resources:
+        requests:
+          cpu: "250m"
+          memory: 256Mi
+        limits:
+          # cpu: "1"
+          memory: 1Gi
+    kubectl:
+      resources:
+        requests:
+          memory: "50Mi"
+          cpu: "12m"
+        limits:
+          memory: "250Mi"
+          cpu: "250m"
+rabbitmq:
+  extraConfiguration: |-
+    vm_memory_high_watermark.absolute = 2G
+    {{- if not .Values.global.xray.rabbitmq.haQuorum.enabled }}
+    raft.wal_max_size_bytes = 1048576
+    {{- end }}
+  resources:
+    requests:
+      cpu: "200m"
+      memory: 300Mi
+    limits:
+      # cpu: "2"
+      memory: 3Gi
+
 distribution:
   ##############################################################
   # The small sizing
@@ -419,15 +578,6 @@ distribution:
       limits:
         # cpu: "1"
         memory: 50Mi
-  
-  redis:
-    resources:
-      requests:
-        cpu: 30m
-        memory: 50Mi
-      limits:
-        # cpu: "1"
-        memory: 150Mi
   
   postgresql:
     primary:

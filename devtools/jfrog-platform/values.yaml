@@ -4,10 +4,12 @@
 # devtools/xray) into JFrog's own combined "jfrog-platform" umbrella chart,
 # which vendors Artifactory + Xray (+ optional catalog/distribution/worker,
 # all left disabled) as one Helm release instead of two independent ones.
-# This is the same edition/version pairing the two standalone devtools were
-# already running (Artifactory 7.117.15, Xray 3.124.20) — only the chart
-# shape changed, not the product versions. See devtools/jfrog-platform/charts/
-# jfrog-platform/README.md for the full upstream values reference.
+# Vendors jfrog-platform 11.6.5 (Artifactory 7.161.26, Xray 3.150.36). Never
+# vendor a platform chart whose Artifactory is older than the version the
+# shared RDS "artifactory" database was last migrated to (7.161.x) —
+# Artifactory refuses to start against a newer schema. See
+# devtools/jfrog-platform/charts/jfrog-platform/README.md for the full
+# upstream values reference.
 #
 # Upstream chart quirk (same as the old devtools/artifactory and
 # devtools/xray values.yaml — this platform chart just wraps the identical
@@ -71,6 +73,15 @@ global:
 # Values for the vendored "jfrog-platform" dependency (charts/jfrog-platform)
 # — nested under its own name per standard Helm subchart convention.
 jfrog-platform:
+  # The chart's "helm.sh/hook: pre-upgrade" check Job only guards upgrades
+  # from releases that ran Distribution / Mission Control (never used here).
+  # ArgoCD maps Helm pre-upgrade hooks to PreSync and runs them on EVERY
+  # sync, including the first one into an empty namespace — where the Job's
+  # `kubectl get secret jfrog-platform-artifactory-unified-secret` fails and
+  # (backoffLimit: 0) blocks the whole sync forever.
+  preUpgradeHook:
+    enabled: false
+
   # Shared platform-wide RabbitMQ (used when a product's own
   # "<product>.rabbitmq.enabled" is left false, so it uses this one instead)
   # — disabled here since Xray keeps its own bundled RabbitMQ (see
@@ -159,11 +170,12 @@ jfrog-platform:
       # real license is available — left unset here, same as before.
       license: {}
 
-    # Ensures the "artifactory" database exists on the shared RDS instance
-    # before Artifactory starts — set in devtools-definition. See
-    # global.database.initDBCreation above for why this chart's own
-    # built-in DB-creation hook isn't used instead.
-    customInitContainersBegin: ""
+      # Ensures the "artifactory" database exists on the shared RDS instance
+      # before Artifactory starts — set in devtools-definition. See
+      # global.database.initDBCreation above for why this chart's own
+      # built-in DB-creation hook isn't used instead. Self-prefixed: the
+      # artifactory subchart reads .Values.artifactory.customInitContainersBegin.
+      customInitContainersBegin: ""
 
   xray:
     enabled: true

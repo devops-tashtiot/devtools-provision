@@ -43,3 +43,59 @@ These presets are for basic testing and not meant to be used in production
 {{- printf "ERROR: Preset key '%s' invalid. Allowed values are %s" .type (join "," (keys $presets)) | fail -}}
 {{- end -}}
 {{- end -}}
+
+{{/*
+Render container resources with optional CPU limits control.
+This helper allows disabling CPU limits while keeping other resource settings intact.
+Usage: {{ include "common.resources" (dict "resources" .Values.resources) }}
+
+When resources.disableCpuLimits is true:
+  - CPU limits will NOT be rendered in the pod spec
+  - CPU requests are still rendered if specified
+  - Memory limits and requests are unaffected
+
+When resources.disableCpuLimits is false or not set (default):
+  - All resource settings are rendered as-is (backward compatible)
+
+This feature helps avoid CFS throttling for CPU-bound or bursty workloads.
+This helper will not handle `claims` as part of the resources, which can be taken as a TODO later
+*/}}
+{{- define "common.resources" -}}
+{{- $resources := .resources -}}
+{{- if $resources -}}
+{{- $disableCpuLimits := default false $resources.disableCpuLimits -}}
+{{- if $disableCpuLimits -}}
+{{- /* Build resources without CPU limits */ -}}
+{{- $newResources := dict -}}
+{{- if $resources.requests -}}
+{{- $_ := set $newResources "requests" $resources.requests -}}
+{{- end -}}
+{{- if $resources.limits -}}
+{{- $newLimits := dict -}}
+{{- if $resources.limits.memory -}}
+{{- $_ := set $newLimits "memory" $resources.limits.memory -}}
+{{- end -}}
+{{- /* Add any other limit fields except cpu */ -}}
+{{- range $key, $value := $resources.limits -}}
+{{- if and (ne $key "cpu") (ne $key "memory") -}}
+{{- $_ := set $newLimits $key $value -}}
+{{- end -}}
+{{- end -}}
+{{- if $newLimits -}}
+{{- $_ := set $newResources "limits" $newLimits -}}
+{{- end -}}
+{{- end -}}
+{{- toYaml $newResources -}}
+{{- else -}}
+{{- /* Default behavior: render all resources as-is */ -}}
+{{- $cleanResources := dict -}}
+{{- if $resources.requests -}}
+{{- $_ := set $cleanResources "requests" $resources.requests -}}
+{{- end -}}
+{{- if $resources.limits -}}
+{{- $_ := set $cleanResources "limits" $resources.limits -}}
+{{- end -}}
+{{- toYaml $cleanResources -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
